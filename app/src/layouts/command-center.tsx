@@ -9,8 +9,8 @@ import { Icon } from "@higgsfield/quanta/icon";
 import { Sparkle, Shield, Activity, Gauge, Radio, Zap, Database, Users, Briefcase, CheckSquare, FileText, Wallet, Brain, LayoutGrid, MessageSquare, Bell, Calendar, Inbox, FolderOpen, Video, Newspaper, Headphones, Webhook, BarChart3, Clock, BookOpen, HeartPulse, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { appFaviconUrl, appMeta } from "@/lib/app-meta";
-import { askZeusFn, createContactFn, createDealFn, createNoteFn, createTaskFn, getDashboardFn } from "@/lib/command-center.server";
-import type { DashboardSnapshot } from "@/lib/command-center.server";
+import { askZeusFn, createContactFn, createDealFn, createNoteFn, createTaskFn, getDashboardFn } from "@/lib/command-center.functions";
+import type { DashboardSnapshot } from "@/lib/command-center.functions";
 
 const MODULES = [
   { name: "Task Matrix", status: "online", icon: CheckSquare },
