@@ -149,7 +149,14 @@ export function CommandCenterLayout() {
               </div>
               <div className="mb-2 flex-1 space-y-2 overflow-y-auto" style={{ maxHeight: 220 }}>
                 {chat.length === 0 ? (
-                  <p className="text-[11px] text-slate-500">Ask ZEUS anything — pipeline, tasks, contacts, invoices, or "schedule my day".</p>
+                  <>
+                    <p className="text-[11px] text-slate-500">Ask ZEUS anything — or tap a command:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {["What's my pipeline?", "Show my open tasks", "What's our cashflow?", "Create a task: follow up with Acme"].map((s) => (
+                        <button key={s} type="button" onClick={() => setPrompt(s)} className="rounded-full border border-cyan-500/30 bg-cyan-500/5 px-2.5 py-1 text-[10px] text-cyan-200 hover:bg-cyan-500/15">{s}</button>
+                      ))}
+                    </div>
+                  </>
                 ) : chat.map((m, i) => (
                   <div key={i} className={cn("rounded-lg px-2 py-1.5 text-[12px]", m.role === "user" ? "bg-cyan-500/10 text-cyan-200" : "bg-slate-800/60 text-slate-200")}>
                     {m.text}
