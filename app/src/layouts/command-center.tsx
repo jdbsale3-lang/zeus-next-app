@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@higgsfield/quanta/button";
 import { Input } from "@higgsfield/quanta/input";
@@ -67,8 +67,11 @@ function ZeusSphere({ onClick }: { onClick: () => void }) {
 
 export function CommandCenterLayout() {
   const [prompt, setPrompt] = useState("");
-  const [chat, setChat] = useState<{ role: string; text: string }[]>([]);
+  const [chat, setChat] = useState<{ role: string; text: string; error?: boolean }[]>([]);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const runRef = useRef(0);
+  const cancelledRef = useRef(false);
 
   const { data: snapshot, isLoading } = useQuery({
     queryKey: ["zeus-dashboard"],
@@ -80,14 +83,29 @@ export function CommandCenterLayout() {
     const q = prompt;
     setPrompt("");
     setChat((c) => [...c, { role: "user", text: q }]);
+    setError(null);
     setBusy(true);
+    cancelledRef.current = false;
+    const myRun = ++runRef.current;
     try {
       const res = await askZeusFn({ data: { message: q } });
+      // Ignore stale results if the user sent a newer run or cancelled
+      if (runRef.current !== myRun || cancelledRef.current) return;
       setChat((c) => [...c, { role: "assistant", text: res.answer }]);
-    } catch {
-      setChat((c) => [...c, { role: "assistant", text: "I hit an error — try again." }]);
+    } catch (e) {
+      if (runRef.current !== myRun || cancelledRef.current) return;
+      setError((e as Error)?.message ?? "Request failed");
+      setChat((c) => [...c, { role: "assistant", text: "ZEUS hit an error on that run.", error: true }]);
+    } finally {
+      if (runRef.current === myRun) setBusy(false);
     }
+  };
+
+  const cancel = () => {
+    cancelledRef.current = true;
+    runRef.current++; // invalidate the in-flight run
     setBusy(false);
+    setChat((c) => [...c, { role: "assistant", text: "⏹ Run stopped — what next?" }]);
   };
 
   return (
@@ -158,15 +176,30 @@ export function CommandCenterLayout() {
                     </div>
                   </>
                 ) : chat.map((m, i) => (
-                  <div key={i} className={cn("rounded-lg px-2 py-1.5 text-[12px]", m.role === "user" ? "bg-cyan-500/10 text-cyan-200" : "bg-slate-800/60 text-slate-200")}>
+                  <div key={i} className={cn("rounded-lg px-2 py-1.5 text-[12px]", m.role === "user" ? "bg-cyan-500/10 text-cyan-200" : m.error ? "bg-rose-500/10 text-rose-300" : "bg-slate-800/60 text-slate-200")}>
                     {m.text}
                   </div>
                 ))}
-                {busy && <Loader variant="stars" />}
+                {busy && (
+                  <div className="flex items-center gap-2 text-[11px] text-cyan-300">
+                    <Loader variant="stars" />
+                    <span>ZEUS is working…</span>
+                  </div>
+                )}
+                {error && !busy && (
+                  <div className="flex items-center justify-between gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2 py-1.5 text-[11px] text-rose-300">
+                    <span>That run failed.</span>
+                    <button type="button" onClick={() => setError(null)} className="rounded border border-rose-500/40 px-2 py-0.5 text-[10px] hover:bg-rose-500/20">Dismiss</button>
+                  </div>
+                )}
               </div>
               <div className="flex items-end gap-2">
                 <Textarea label="Command ZEUS" value={prompt} onChange={(e) => setPrompt(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(); } }} rows={1} />
-                <Button variant="marketingPrimary" size="md" onClick={ask} disabled={busy || !prompt.trim()}>Ask</Button>
+                {busy ? (
+                  <Button variant="marketingPrimary" size="md" onClick={cancel}>Stop</Button>
+                ) : (
+                  <Button variant="marketingPrimary" size="md" onClick={ask} disabled={!prompt.trim()}>Ask</Button>
+                )}
               </div>
             </div>
           </section>
