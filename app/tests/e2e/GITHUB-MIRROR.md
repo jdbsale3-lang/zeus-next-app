@@ -1,5 +1,20 @@
 # Mirroring to GitHub — activate the voice E2E CI
 
+> **Status: mirrored.** The repo is live at
+> `github.com/jdbsale3-lang/zeus-next-app` (default branch `main`), and the
+> README badge is wired to the real workflow. The mirror is maintained as the
+> `github-mirror` branch in the project repo — it is `origin/main` minus the
+> platform-internal scaffolding (`.github/workflows/ci.yml`, `app/AGENTS.md`).
+> Re-sync after any push to `origin/main`:
+>
+> ```bash
+> git fetch origin main
+> git checkout github-mirror
+> git merge origin/main --no-edit        # if ci.yml/AGENTS.md come back:
+> git rm --cached -r .github/workflows/ci.yml app/AGENTS.md && git commit -m "Mirror: re-strip platform scaffolding"
+> git push github github-mirror:main     # the `github` remote is set for SSH
+> ```
+
 The E2E workflow (`.github/workflows/voice-e2e.yml`) runs on GitHub Actions,
 so the repo must be reachable there. This repo currently lives on the
 Higgsfield-hosted git; mirroring it to GitHub is a one-time push — nothing in
