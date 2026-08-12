@@ -232,10 +232,12 @@ export function CommandCenterLayout() {
                   <div className="col-span-2 text-[11px] text-slate-500">Loading…</div>
                 )}
                 {connected.slice(0, 10).map((c) => (
-                  <div key={c.provider} className="flex items-center gap-2 rounded-lg border border-slate-800 bg-[#0f1a2e] px-2 py-1.5">
+                  <a key={c.provider} href={c.url ?? "#"} target="_blank" rel="noreferrer"
+                    className="flex items-center gap-2 rounded-lg border border-slate-800 bg-[#0f1a2e] px-2 py-1.5 transition hover:border-cyan-500/40 hover:bg-cyan-500/10">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                     <span className="text-[11px]">{c.account_label}</span>
-                  </div>
+                    <span className="ml-auto text-[8px] text-slate-500">↗</span>
+                  </a>
                 ))}
               </div>
             </div>
@@ -358,13 +360,15 @@ export function CommandCenterLayout() {
               </div>
               <div className="grid grid-cols-2 gap-1.5">
                 {sortedConnections.map((c) => (
-                  <div key={c.provider} className="flex items-center gap-2 rounded-md border border-slate-800 bg-[#0d1526] px-2 py-1.5">
+                  <a key={c.provider} href={c.url ?? "#"} target="_blank" rel="noreferrer"
+                    className="flex items-center gap-2 rounded-md border border-slate-800 bg-[#0d1526] px-2 py-1.5 transition hover:border-cyan-500/40 hover:bg-cyan-500/5">
                     <span className={cn("h-1.5 w-1.5 rounded-full", connColor[c.status] ?? "bg-slate-500")} />
                     <span className="truncate text-[11px]">{c.account_label}</span>
                     {c.status === "waiting" && (
                       <span className="rounded-full border border-amber-400/40 px-1 text-[8px] font-bold text-amber-300">AUTH</span>
                     )}
-                  </div>
+                    <span className="ml-auto text-[8px] text-slate-500">↗</span>
+                  </a>
                 ))}
                 {sortedConnections.length === 0 && (
                   <div className="col-span-2 text-[11px] text-slate-500">Loading connections…</div>

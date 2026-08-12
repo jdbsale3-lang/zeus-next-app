@@ -412,6 +412,14 @@ async function ensureSeeded(org: string): Promise<void> {
         stmt.bind(crypto.randomUUID(), org, c.provider, c.account_label, c.kind, c.status, c.url, c.note)),
     );
   }
+  const kc = await d.prepare("SELECT COUNT(*) c FROM contacts WHERE org_id=?").bind(org).first();
+  if (Number(kc?.c ?? 0) === 0) {
+    const stmt = d.prepare("INSERT INTO contacts (id, org_id, type, name, email, phone, tags, source) VALUES (?,?,?,?,?,?,?,?)");
+    await d.batch(
+      SEED_CONTACTS.map((c) =>
+        stmt.bind(crypto.randomUUID(), org, "company", c.name, c.email, c.phone, c.tags, c.source)),
+    );
+  }
 }
 
 async function listProjectsRaw(org: string): Promise<ProjectRow[]> {
