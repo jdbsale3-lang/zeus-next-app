@@ -6,11 +6,11 @@ import { Loader } from "@higgsfield/quanta/loader";
 import { Textarea } from "@higgsfield/quanta/textarea";
 import { Typography } from "@higgsfield/quanta/typography";
 import { Icon } from "@higgsfield/quanta/icon";
-import { Sparkle, Shield, Activity, Gauge, Radio, Zap, Database, Users, Briefcase, CheckSquare, FileText, Wallet, Brain, LayoutGrid, MessageSquare, Bell, Calendar, Inbox, FolderOpen, Video, Newspaper, Headphones, Webhook, BarChart3, Clock, BookOpen, HeartPulse, Lock, Mic, Volume2, VolumeX } from "lucide-react";
+import { Sparkle, Shield, Activity, Gauge, Radio, Zap, Database, Users, Briefcase, CheckSquare, FileText, Wallet, Brain, LayoutGrid, MessageSquare, Bell, Calendar, Inbox, FolderOpen, Video, Newspaper, Headphones, Webhook, BarChart3, Clock, BookOpen, HeartPulse, Lock, Mic, Volume2, VolumeX, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { appFaviconUrl } from "@/lib/app-meta";
-import { askZeusFn, getConnectionsFn, getDashboardFn, getProjectsFn } from "@/lib/command-center.functions";
-import type { ConnectionRow, ProjectRow } from "@/lib/command-center.functions";
+import { appFaviconUrl, appMeta } from "@/lib/app-meta";
+import { askZeusFn, createContactFn, createDealFn, createNoteFn, createTaskFn, getDashboardFn, getProjectsFn, getConnectionsFn } from "@/lib/command-center.functions";
+import type { DashboardSnapshot } from "@/lib/command-center.functions";
 import { hasNativeSpeech, hasVoiceInput, speak, startListening, stopListening } from "@/lib/voice";
 
 const MODULES = [
@@ -48,9 +48,19 @@ const CALLS = [
 ];
 
 const statusColor: Record<string, string> = {
-  online: "bg-emerald-400",
-  standby: "bg-amber-400",
-  attention: "bg-rose-400",
+  online: "bg-emerald-400", standby: "bg-amber-400", attention: "bg-rose-400",
+};
+
+const connColor: Record<string, string> = {
+  connected: "bg-emerald-400", waiting: "bg-amber-400", disconnected: "bg-slate-500",
+  needs_key: "bg-amber-400", unavailable: "bg-rose-400",
+};
+
+const projectStatusColor: Record<string, string> = {
+  live: "text-emerald-300 border-emerald-500/40 bg-emerald-500/10",
+  planning: "text-amber-300 border-amber-500/40 bg-amber-500/10",
+  build: "text-cyan-300 border-cyan-500/40 bg-cyan-500/10",
+  paused: "text-slate-400 border-slate-600 bg-slate-700/20",
 };
 
 function ZeusSphere({ listening, onClick }: { listening: boolean; onClick: () => void }) {
@@ -79,8 +89,9 @@ export function CommandCenterLayout() {
   useEffect(() => {
     voiceOnRef.current = voiceOn;
   }, [voiceOn]);
-  // Voice capability is browser-only: SSR and first client render agree, then
-  // we detect on mount (avoids an SSR/client hydration mismatch).
+  // Voice capability is browser-only, so SSR and the first client render agree
+  // (both "unavailable"), then we detect on mount. This avoids an
+  // SSR/client hydration mismatch on devices whose API differs from Node.
   const [voiceAvailable, setVoiceAvailable] = useState(false);
   const [nativeSpeech, setNativeSpeech] = useState(false);
   useEffect(() => {
@@ -94,15 +105,18 @@ export function CommandCenterLayout() {
     queryFn: () => getDashboardFn(),
   });
 
-  const { data: connections } = useQuery({
-    queryKey: ["zeus-connections"],
-    queryFn: () => getConnectionsFn(),
-  });
-
   const { data: projects } = useQuery({
     queryKey: ["zeus-projects"],
     queryFn: () => getProjectsFn(),
   });
+
+  const { data: connections } = useQuery({
+    queryKey: ["zeus-connections"],
+    queryFn: () => getConnectionsFn(),
+  });
+  const connected = (connections ?? []).filter((c) => c.status === "connected");
+  const sortedConnections = [...(connections ?? [])]
+    .sort((a, b) => Number(b.status === "connected") - Number(a.status === "connected"));
 
   const ask = async (text?: string) => {
     const q = (text ?? prompt).trim();
@@ -209,45 +223,18 @@ export function CommandCenterLayout() {
             </div>
           </section>
 
-          {/* CENTER: Accounts + projects + AI assistant */}
+          {/* CENTER: Live connections + AI assistant */}
           <section className="flex flex-col gap-4">
             <div className="rounded-xl border border-slate-800 bg-[#0d1526]/60 p-4">
-              <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-400">Account Connections</h2>
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-400">Live Connections</h2>
               <div className="grid grid-cols-2 gap-2">
-                {(connections ?? []).map((c) => (
-                  <div key={c.id} className="flex items-center justify-between gap-2 rounded-lg border border-slate-800 bg-[#0f1a2e] px-2 py-1.5">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", c.status === "connected" ? "bg-emerald-400" : "bg-amber-400")} />
-                      <span className="truncate text-[11px]">{c.provider}</span>
-                    </div>
-                    {c.status === "connected" ? (
-                      c.url ? (
-                        <a href={c.url} target="_blank" rel="noreferrer" className="shrink-0 text-[9px] text-cyan-400 hover:underline">OPEN</a>
-                      ) : (
-                        <span className="shrink-0 text-[9px] text-emerald-400">LIVE</span>
-                      )
-                    ) : (
-                      <span className="shrink-0 rounded border border-amber-500/40 px-1 text-[9px] text-amber-300">AUTH</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-slate-800 bg-[#0d1526]/60 p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400">Project Fleet</h2>
-                <span className="text-[9px] text-slate-500">{projects?.length ?? 0} SHIPPED</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {(projects ?? []).map((p) => (
-                  <div key={p.id} className="flex items-center justify-between gap-2 rounded-lg border border-slate-800 bg-[#0f1a2e] px-2 py-1.5">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", p.status === "live" ? "bg-emerald-400" : "bg-amber-400")} />
-                      <span className="truncate text-[11px]" title={p.name}>{p.name}</span>
-                    </div>
-                    <span className="shrink-0 text-[9px] text-slate-500 uppercase">{p.kind}</span>
-                    {p.url && <a href={p.url} target="_blank" rel="noreferrer" className="shrink-0 text-[9px] text-cyan-400 hover:underline">›</a>}
+                {connected.length === 0 && connections === undefined && (
+                  <div className="col-span-2 text-[11px] text-slate-500">Loading…</div>
+                )}
+                {connected.slice(0, 10).map((c) => (
+                  <div key={c.provider} className="flex items-center gap-2 rounded-lg border border-slate-800 bg-[#0f1a2e] px-2 py-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    <span className="text-[11px]">{c.account_label}</span>
                   </div>
                 ))}
               </div>
@@ -273,7 +260,7 @@ export function CommandCenterLayout() {
                   <>
                     <p className="text-[11px] text-slate-500">Ask ZEUS anything — or tap a command:</p>
                     <div className="flex flex-wrap gap-1.5">
-                      {["What's my pipeline?", "Show my open tasks", "What's our cashflow?", "Create a task: follow up with Acme"].map((s) => (
+                      {["What's my pipeline?", "Show my open tasks", "What's our cashflow?", "Which accounts are connected?", "List our projects"].map((s) => (
                         <button key={s} type="button" onClick={() => setPrompt(s)} className="rounded-full border border-cyan-500/30 bg-cyan-500/5 px-2.5 py-1 text-[10px] text-cyan-200 hover:bg-cyan-500/15">{s}</button>
                       ))}
                     </div>
@@ -338,6 +325,75 @@ export function CommandCenterLayout() {
             <Button variant="tertiary" size="sm" className="mt-3 w-full">View Full Calendar</Button>
           </section>
         </div>
+
+        {/* Portfolio & Accounts: projects + connection registry */}
+        <section className="mt-5 rounded-xl border border-slate-800 bg-[#0d1526]/60 p-4">
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-400">Portfolio & Accounts</h2>
+          <div className="grid gap-3 lg:grid-cols-[1.2fr_1fr]">
+            {/* Projects */}
+            <div className="rounded-lg border border-slate-800 bg-[#0f1a2e] p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Projects</div>
+                <div className="text-[10px] text-slate-500">{projects?.length ?? "…"} tracked</div>
+              </div>
+              <div className="grid grid-cols-1 gap-1.5">
+                {projects?.map((p) => (
+                  <a key={p.id} href={p.url ?? "#"} target="_blank" rel="noreferrer"
+                    className="group flex items-center justify-between gap-2 rounded-md border border-slate-800 bg-[#0d1526] px-2 py-1.5 transition hover:border-cyan-500/40 hover:bg-cyan-500/5">
+                    <span className="truncate text-[11px] text-slate-300">{p.name}</span>
+                    <span className={cn("shrink-0 rounded-full border px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider", projectStatusColor[p.status] ?? projectStatusColor.live)}>{p.status}</span>
+                  </a>
+                ))}
+                {!projects && (
+                  <div className="text-[11px] text-slate-500">Loading portfolio…</div>
+                )}
+              </div>
+            </div>
+
+            {/* Connections */}
+            <div className="rounded-lg border border-slate-800 bg-[#0f1a2e] p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Connections</div>
+                <div className="text-[10px] text-slate-500">{connected.length} live</div>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                {sortedConnections.map((c) => (
+                  <div key={c.provider} className="flex items-center gap-2 rounded-md border border-slate-800 bg-[#0d1526] px-2 py-1.5">
+                    <span className={cn("h-1.5 w-1.5 rounded-full", connColor[c.status] ?? "bg-slate-500")} />
+                    <span className="truncate text-[11px]">{c.account_label}</span>
+                    {c.status === "waiting" && (
+                      <span className="rounded-full border border-amber-400/40 px-1 text-[8px] font-bold text-amber-300">AUTH</span>
+                    )}
+                  </div>
+                ))}
+                {sortedConnections.length === 0 && (
+                  <div className="col-span-2 text-[11px] text-slate-500">Loading connections…</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Bottom: HQ strip — Maps + Earth + automation stack */}
+        <section className="mt-5 grid gap-2 lg:grid-cols-[1.4fr_1fr]">
+          <div className="rounded-xl border border-slate-800 bg-[#0d1526]/60 p-3">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Headquarters — 66 Paul Street, London EC2A 4NA</div>
+            <iframe title="HQ map" src="https://maps.google.com/maps?q=66%20Paul%20Street%2C%20London%20EC2A%204NA&output=embed" className="mt-2 h-44 w-full rounded-lg opacity-80" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+            <a href="https://earth.google.com/web/@51.5206,-0.0843" target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-[10px] text-slate-500 hover:text-cyan-300">
+              <Globe size="sm" className="text-cyan-400" /> Open in Google Earth
+            </a>
+          </div>
+          <div className="rounded-xl border border-slate-800 bg-[#0d1526]/60 p-3">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Automation Stack</div>
+            <div className="mt-2 grid grid-cols-1 gap-1.5 text-[11px]">
+              <span className="rounded border border-slate-800 px-2 py-1 text-slate-300">Playwright E2E — Chromium · Firefox · WebKit</span>
+              <span className="rounded border border-slate-800 px-2 py-1 text-emerald-400">Voice suite: 24 tests passing on CI</span>
+              <span className="rounded border border-slate-800 px-2 py-1 text-slate-300">Firefox fallback: server transcription (Whisper)</span>
+              <a href="https://github.com/jdbsale3-lang/zeus-next-app/actions" target="_blank" rel="noreferrer" className="rounded border border-cyan-500/40 px-2 py-1 text-cyan-200 hover:bg-cyan-500/15 hover:border-cyan-400">Open GitHub Actions</a>
+              <a href="https://earth.google.com" target="_blank" rel="noreferrer" className="rounded border border-slate-800 px-2 py-1 text-slate-400 hover:text-cyan-300">Google Earth — satellite view</a>
+            </div>
+          </div>
+        </section>
 
         {/* Bottom: Zeus sphere */}
         <div className="mt-8 flex flex-col items-center gap-2">

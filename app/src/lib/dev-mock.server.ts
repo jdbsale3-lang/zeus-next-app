@@ -61,6 +61,22 @@ export function mockDashboard(): DashboardSnapshot {
   };
 }
 
+export function mockProjects(): { id: string; name: string; slug: string | null; url: string | null; category: string; status: string; description: string | null }[] {
+  return [
+    { id: "p_mock_1", name: "ZEUS AI Command Center", slug: "zeus-next-app", url: "https://zeus-next-app.higgsfield.app", category: "app", status: "live", description: "Voice-first business OS — this app." },
+    { id: "p_mock_2", name: "AEGIS AI Security", slug: "aegis-security", url: "https://aegis-security.higgsfield.app", category: "security", status: "live", description: "8 modules · 24 layers · GDPR/CE-ready." },
+    { id: "p_mock_3", name: "NHS ID Card System", slug: "nhs-id-card", url: "https://zeusai-intelligence.org/nhs", category: "nhs", status: "planning", description: "50M smart cards · £24.4B 10-yr value." },
+  ];
+}
+
+export function mockConnections(): { id: string; provider: string; account_label: string; kind: string; status: string; url: string | null; note: string | null }[] {
+  return [
+    { id: "c_mock_1", provider: "gmail", account_label: "Gmail", kind: "saas", status: "connected", url: "https://mail.google.com", note: "Email inbound/outbound" },
+    { id: "c_mock_2", provider: "x", account_label: "X (Twitter)", kind: "platform", status: "connected", url: "https://x.com/jdbsales3", note: "@jdbsales3" },
+    { id: "c_mock_3", provider: "discord_bot", account_label: "Discord", kind: "saas", status: "waiting", url: "https://discord.com", note: "Authorization link sent" },
+  ];
+}
+
 export function mockAskZeus(message: string): string {
   ensureMockSeed();
   const lower = message.toLowerCase();

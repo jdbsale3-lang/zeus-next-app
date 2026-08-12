@@ -2,7 +2,6 @@
 
 import type { ComponentPropsWithRef } from "react";
 import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
-import { icon } from "@higgsfield/quanta/icon";
 import { cn as cx } from "@/lib/utils";
 
 /**
@@ -76,14 +75,9 @@ export function IconTile({ as, gradient, className, style, ...props }: IconTileP
       style={isGradient ? { backgroundImage, ...style } : style}
       {...props}
     >
-      <Glyph
-        weight={isGradient ? "fill" : "regular"}
-        aria-hidden
-        className={cx(
-          icon({ size: "sm", color: isGradient ? undefined : "secondary" }),
-          "q-icon-tile-glyph",
-        )}
-      />
+      <span className="q-icon-tile-glyph">
+        <Glyph weight={isGradient ? "fill" : "regular"} aria-hidden />
+      </span>
     </span>
   );
 }
