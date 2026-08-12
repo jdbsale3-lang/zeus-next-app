@@ -394,6 +394,25 @@ const SEED_CONNECTIONS: Omit<ConnectionRow, "id">[] = [
   { provider: "firefox", account_label: "Firefox", kind: "external", status: "connected", url: "https://mozilla.org/firefox", note: "Browser automation via Playwright" },
 ];
 
+const SEED_CONTACTS: { name: string; company: string; email: string | null; phone: string | null; tags: string; source: string }[] = [
+  { name: "JDB Sales Team", company: "JDB Sales / ZEUS AI", email: "jdbsale3@gmail.com", phone: "01922 445318", tags: "team,core", source: "team-directory" },
+  { name: "Jill Birch", company: "ZEUSTRUSTAEGIS SECURITY LTD", email: null, phone: null, tags: "team,co-director", source: "Companies House 17391549" },
+  { name: "ZEUS AI Intelligence", company: "ZEUS AI Intelligence / JDB Sales", email: null, phone: null, tags: "team,org", source: "zeusaiintelligence.org" },
+  { name: "JDB Sales", company: "JDB Sales", email: null, phone: null, tags: "team,org", source: "User-provided" },
+  { name: "Skitts Estate Agents", company: "Skitts Estate Agents", email: null, phone: "01902 631151", tags: "professional,estate-agent", source: "user call schedule" },
+  { name: "Webbs Estate Agents", company: "Webbs Estate Agents", email: null, phone: "01922 929888", tags: "professional,estate-agent", source: "user call schedule" },
+  { name: "KST Accountancy", company: "KST Accountancy LLP", email: "info@kstaccountancy.co.uk", phone: "01902 630877", tags: "professional,accountancy", source: "kstaccountancy.co.uk" },
+  { name: "NHS England Commercial", company: "NHS England", email: "england.supplier@nhs.net", phone: null, tags: "nhs,commercial-route,supplier-engagement", source: "england.nhs.uk/nhs-commercial" },
+  { name: "Crown Commercial Service", company: "Crown Commercial Service (UK Government)", email: "info@crowncommercial.gov.uk", phone: "0345 410 2222", tags: "nhs,commercial-route,framework", source: "crowncommercial.gov.uk" },
+  { name: "DHSC Commercial", company: "Department of Health and Social Care", email: "ccsinbox@dhsc.gov.uk", phone: null, tags: "nhs,commercial-route", source: "Find a Tender / gov.uk" },
+  { name: "NHS SBS (Shared Business Services)", company: "NHS Shared Business Services Ltd", email: "sbs.suppliers@nhs.net", phone: "0303 123 1177", tags: "nhs,commercial-route,framework", source: "sbs.nhs.uk" },
+  { name: "Ultima Business Solutions", company: "Ultima Business Solutions Ltd", email: "enquiries@ultima.com", phone: "0333 015 8000", tags: "prospect,uk-msp,security-review", source: "ultima.com" },
+  { name: "Six Degrees", company: "Six Degrees", email: "info@6dg.co.uk", phone: "0800 012 8060", tags: "prospect,uk-msp,security-review", source: "6dg.co.uk" },
+  { name: "Littlefish", company: "Littlefish Group", email: "info@littlefish.co.uk", phone: "0344 848 4444", tags: "prospect,uk-msp,security-review", source: "littlefish.co.uk" },
+  { name: "Node4", company: "Node4 Ltd", email: "hello@node4.co.uk", phone: "0345 123 2222", tags: "prospect,uk-msp,security-review", source: "node4.co.uk" },
+];
+
+
 async function ensureSeeded(org: string): Promise<void> {
   const d = db();
   const pc = await d.prepare("SELECT COUNT(*) c FROM projects WHERE org_id=?").bind(org).first();
