@@ -6,7 +6,7 @@ import { Loader } from "@higgsfield/quanta/loader";
 import { Textarea } from "@higgsfield/quanta/textarea";
 import { Typography } from "@higgsfield/quanta/typography";
 import { Icon } from "@higgsfield/quanta/icon";
-import { Sparkle, Shield, Activity, Gauge, Radio, Zap, Database, Users, Briefcase, CheckSquare, FileText, Wallet, Brain, LayoutGrid, MessageSquare, Bell, Calendar, Inbox, FolderOpen, Video, Newspaper, Headphones, Webhook, BarChart3, Clock, BookOpen, HeartPulse, Lock, Mic, Volume2, VolumeX, Globe } from "lucide-react";
+import { Sparkle, Shield, Activity, Gauge, Radio, Zap, Database, Users, Briefcase, CheckSquare, FileText, Wallet, Brain, LayoutGrid, MessageSquare, Bell, Calendar, Inbox, FolderOpen, Video, Newspaper, Headphones, Webhook, BarChart3, Clock, BookOpen, HeartPulse, Lock, Mic, Volume2, VolumeX, Globe, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { appFaviconUrl, appMeta } from "@/lib/app-meta";
 import { askZeusFn, createContactFn, createDealFn, createNoteFn, createTaskFn, getDashboardFn, getProjectsFn, getConnectionsFn } from "@/lib/command-center.functions";
