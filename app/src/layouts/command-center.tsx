@@ -8,9 +8,9 @@ import { Typography } from "@higgsfield/quanta/typography";
 import { Icon } from "@higgsfield/quanta/icon";
 import { Sparkle, Shield, Activity, Gauge, Radio, Zap, Database, Users, Briefcase, CheckSquare, FileText, Wallet, Brain, LayoutGrid, MessageSquare, Bell, Calendar, Inbox, FolderOpen, Video, Newspaper, Headphones, Webhook, BarChart3, Clock, BookOpen, HeartPulse, Lock, Mic, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { appFaviconUrl, appMeta } from "@/lib/app-meta";
-import { askZeusFn, createContactFn, createDealFn, createNoteFn, createTaskFn, getDashboardFn } from "@/lib/command-center.functions";
-import type { DashboardSnapshot } from "@/lib/command-center.functions";
+import { appFaviconUrl } from "@/lib/app-meta";
+import { askZeusFn, getConnectionsFn, getDashboardFn, getProjectsFn } from "@/lib/command-center.functions";
+import type { ConnectionRow, ProjectRow } from "@/lib/command-center.functions";
 import { hasNativeSpeech, hasVoiceInput, speak, startListening, stopListening } from "@/lib/voice";
 
 const MODULES = [
@@ -41,11 +41,6 @@ const MODULES = [
   { name: "System Health", status: "online", icon: HeartPulse },
 ];
 
-const INTEGRATIONS = [
-  "Gmail", "HubSpot", "Slack", "Stripe", "Google Calendar",
-  "Google Drive", "Notion", "Claude AI", "Email (SMTP)", "Voice Engine",
-];
-
 const CALLS = [
   { time: "10:00", who: "Skitts Estate Agents", phone: "01902 631151", status: "CONFIRMED" },
   { time: "10:30", who: "Webbs Estate Agents", phone: "01922 929888", status: "CONFIRMED" },
@@ -53,7 +48,9 @@ const CALLS = [
 ];
 
 const statusColor: Record<string, string> = {
-  online: "bg-emerald-400", standby: "bg-amber-400", attention: "bg-rose-400",
+  online: "bg-emerald-400",
+  standby: "bg-amber-400",
+  attention: "bg-rose-400",
 };
 
 function ZeusSphere({ listening, onClick }: { listening: boolean; onClick: () => void }) {
@@ -82,9 +79,8 @@ export function CommandCenterLayout() {
   useEffect(() => {
     voiceOnRef.current = voiceOn;
   }, [voiceOn]);
-  // Voice capability is browser-only, so SSR and the first client render agree
-  // (both "unavailable"), then we detect on mount. This avoids an
-  // SSR/client hydration mismatch on devices whose API differs from Node.
+  // Voice capability is browser-only: SSR and first client render agree, then
+  // we detect on mount (avoids an SSR/client hydration mismatch).
   const [voiceAvailable, setVoiceAvailable] = useState(false);
   const [nativeSpeech, setNativeSpeech] = useState(false);
   useEffect(() => {
@@ -96,6 +92,16 @@ export function CommandCenterLayout() {
   const { data: snapshot, isLoading } = useQuery({
     queryKey: ["zeus-dashboard"],
     queryFn: () => getDashboardFn(),
+  });
+
+  const { data: connections } = useQuery({
+    queryKey: ["zeus-connections"],
+    queryFn: () => getConnectionsFn(),
+  });
+
+  const { data: projects } = useQuery({
+    queryKey: ["zeus-projects"],
+    queryFn: () => getProjectsFn(),
   });
 
   const ask = async (text?: string) => {
@@ -203,15 +209,45 @@ export function CommandCenterLayout() {
             </div>
           </section>
 
-          {/* CENTER: Live integrations + AI assistant */}
+          {/* CENTER: Accounts + projects + AI assistant */}
           <section className="flex flex-col gap-4">
             <div className="rounded-xl border border-slate-800 bg-[#0d1526]/60 p-4">
-              <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-400">Live Integrations</h2>
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-400">Account Connections</h2>
               <div className="grid grid-cols-2 gap-2">
-                {INTEGRATIONS.map((i) => (
-                  <div key={i} className="flex items-center gap-2 rounded-lg border border-slate-800 bg-[#0f1a2e] px-2 py-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                    <span className="text-[11px]">{i}</span>
+                {(connections ?? []).map((c) => (
+                  <div key={c.id} className="flex items-center justify-between gap-2 rounded-lg border border-slate-800 bg-[#0f1a2e] px-2 py-1.5">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", c.status === "connected" ? "bg-emerald-400" : "bg-amber-400")} />
+                      <span className="truncate text-[11px]">{c.provider}</span>
+                    </div>
+                    {c.status === "connected" ? (
+                      c.url ? (
+                        <a href={c.url} target="_blank" rel="noreferrer" className="shrink-0 text-[9px] text-cyan-400 hover:underline">OPEN</a>
+                      ) : (
+                        <span className="shrink-0 text-[9px] text-emerald-400">LIVE</span>
+                      )
+                    ) : (
+                      <span className="shrink-0 rounded border border-amber-500/40 px-1 text-[9px] text-amber-300">AUTH</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-800 bg-[#0d1526]/60 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400">Project Fleet</h2>
+                <span className="text-[9px] text-slate-500">{projects?.length ?? 0} SHIPPED</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {(projects ?? []).map((p) => (
+                  <div key={p.id} className="flex items-center justify-between gap-2 rounded-lg border border-slate-800 bg-[#0f1a2e] px-2 py-1.5">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", p.status === "live" ? "bg-emerald-400" : "bg-amber-400")} />
+                      <span className="truncate text-[11px]" title={p.name}>{p.name}</span>
+                    </div>
+                    <span className="shrink-0 text-[9px] text-slate-500 uppercase">{p.kind}</span>
+                    {p.url && <a href={p.url} target="_blank" rel="noreferrer" className="shrink-0 text-[9px] text-cyan-400 hover:underline">›</a>}
                   </div>
                 ))}
               </div>

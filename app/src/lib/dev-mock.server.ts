@@ -11,6 +11,8 @@ type MockTask = { id: string; title: string; status: string; priority: string; d
 type MockInvoice = { number: string; status: string; amount: number; due_at?: string };
 type MockContact = { id: string; name: string; email?: string; phone?: string };
 type MockNote = { id: string; title: string; body: string };
+type MockProject = { id: string; name: string; slug?: string | null; url?: string | null; status: string; kind: string };
+type MockConnection = { id: string; provider: string; accountLabel?: string | null; status: string; url?: string | null };
 
 export const mockStore = {
   contacts: [] as MockContact[],
@@ -31,6 +33,11 @@ export function ensureMockSeed(): void {
   );
   mockStore.tasks.push({ id: "t_mock_1", title: "Follow up with Skitts", status: "todo", priority: "high" });
   mockStore.invoices.push({ number: "INV-001", status: "sent", amount: 5000 });
+  mockStore.contacts.push(
+    { id: "c_mock_1", name: "JDB Sales", email: "jdbsale3@gmail.com", phone: "01922 445318" },
+    { id: "c_mock_2", name: "ZEUS AI Intelligence", phone: "01902 631151" },
+    { id: "c_mock_3", name: "ZEUSTRUSTAEGIS SECURITY LTD", phone: "01902 639877" },
+  );
 }
 
 export function mockDashboard(): DashboardSnapshot {
@@ -102,4 +109,31 @@ export function mockCreateNote(data: { title?: string; body: string }) {
   const n: MockNote = { id: crypto.randomUUID(), title: data.title ?? "", body: data.body };
   mockStore.notes.push(n);
   return { id: n.id };
+}
+
+// ---- Project fleet & connection registry sandbox mirrors (no D1) ----
+export function mockProjects(): MockProject[] {
+  return [
+    { id: "p1", name: "ZEUS OS (app)", slug: "zeus-next-app", url: "https://zeus-next-app.higgsfield.app", status: "live", kind: "app" },
+    { id: "p2", name: "ZEUS AI Intelligence", slug: "zeusai-intelligence", url: "https://zeusai-intelligence.higgsfield.app", status: "live", kind: "website" },
+    { id: "p3", name: "AEGIS Security", slug: "aegis-security", url: "https://aegis-security.higgsfield.app", status: "live", kind: "website" },
+    { id: "p4", name: "AEGIS API Docs", slug: "aegis-api-docs", url: "https://aegis-api-docs.higgsfield.app", status: "live", kind: "docs" },
+    { id: "p5", name: "ZEUS Gantt Docs", slug: "zeus-gantt-docs", url: "https://zeus-gantt-docs.higgsfield.app", status: "live", kind: "docs" },
+    { id: "p6", name: "Intelligence CRM", slug: "intelligence-crm", url: "https://intelligence-crm.higgsfield.app", status: "live", kind: "website" },
+    { id: "p7", name: "ZEUS Mind", slug: "zeus-mind", url: "https://zeus-mind.higgsfield.app", status: "live", kind: "website" },
+    { id: "p8", name: "CalorieLens", slug: "calorielens", url: "https://calorielens.higgsfield.app", status: "live", kind: "website" },
+  ];
+}
+
+export function mockConnections(): MockConnection[] {
+  return [
+    { id: "c1", provider: "Gmail", accountLabel: "jdbsale3@gmail.com", status: "connected", url: null },
+    { id: "c2", provider: "YouTube", accountLabel: "ZeusAI (@jdbsale)", status: "connected", url: "https://www.youtube.com/@jdbsale" },
+    { id: "c3", provider: "X / Twitter", accountLabel: "@jdbsales3", status: "connected", url: "https://x.com/jdbsales3" },
+    { id: "c4", provider: "LinkedIn", accountLabel: "Darren Birch (JDB Sales)", status: "connected", url: "https://www.linkedin.com" },
+    { id: "c5", provider: "TikTok", accountLabel: "JDB Sales", status: "connected", url: "https://www.tiktok.com" },
+    { id: "c6", provider: "HubSpot CRM", accountLabel: "JDB Sales", status: "connected", url: null },
+    { id: "c7", provider: "Discord", accountLabel: "ZEUS server", status: "needs_auth", url: "https://pipedream.com/_static/connect.html?token=ctok_89ce2ade07454c7981edb5c0d05dd39f&connectLink=true&app=discord_bot" },
+    { id: "c8", provider: "TikTok Ads", accountLabel: "Business ads", status: "needs_auth", url: null },
+  ];
 }

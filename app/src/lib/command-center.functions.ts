@@ -7,6 +7,8 @@ import {
   createDeal,
   createNote,
   askZeus,
+  getProjects,
+  getConnections,
 } from "./command-center.server";
 import { transcribeVoice } from "./voice.server";
 
@@ -21,8 +23,33 @@ export interface DashboardSnapshot {
   recentMessages: { id: string; role: string; text: string; createdAt: string }[];
 }
 
+export type ProjectRow = {
+  id: string;
+  name: string;
+  slug: string | null;
+  url: string | null;
+  status: string;
+  kind: string;
+};
+
+export type ConnectionRow = {
+  id: string;
+  provider: string;
+  accountLabel: string | null;
+  status: string;
+  url: string | null;
+};
+
 export const getDashboardFn = createServerFn({ method: "POST" }).handler(
   (): Promise<DashboardSnapshot> => getDashboard(),
+);
+
+export const getProjectsFn = createServerFn({ method: "POST" }).handler(
+  (): Promise<ProjectRow[]> => getProjects(),
+);
+
+export const getConnectionsFn = createServerFn({ method: "POST" }).handler(
+  (): Promise<ConnectionRow[]> => getConnections(),
 );
 
 export const createContactFn = createServerFn({ method: "POST" })

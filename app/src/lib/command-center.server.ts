@@ -5,11 +5,13 @@ import {
   DEV_MOCK,
   DEV_ORG,
   mockAskZeus,
+  mockConnections,
   mockCreateContact,
   mockCreateDeal,
   mockCreateNote,
   mockCreateTask,
   mockDashboard,
+  mockProjects,
   mockStore,
 } from "./dev-mock.server";
 
@@ -293,4 +295,36 @@ export async function createNote(data: { title?: string; body: string }) {
   await db().prepare("INSERT INTO notes (id, org_id, title, body) VALUES (?,?,?,?)")
     .bind(id, org, data.title ?? "", data.body).run();
   return { id };
+}
+
+// ---- Project fleet & account connections (the business OS surface) ----
+export interface ProjectRow {
+  id: string;
+  name: string;
+  slug: string | null;
+  url: string | null;
+  status: string;
+  kind: string;
+}
+
+export interface ConnectionRow {
+  id: string;
+  provider: string;
+  accountLabel: string | null;
+  status: string;
+  url: string | null;
+}
+
+export async function getProjects(): Promise<ProjectRow[]> {
+  if (DEV_MOCK) return mockProjects();
+  const org = await currentOrgId();
+  const rows = await db().prepare("SELECT id, name, slug, url, status, kind FROM projects WHERE org_id=? ORDER BY name").bind(org).all();
+  return (rows.results ?? []) as unknown as ProjectRow[];
+}
+
+export async function getConnections(): Promise<ConnectionRow[]> {
+  if (DEV_MOCK) return mockConnections();
+  const org = await currentOrgId();
+  const rows = await db().prepare("SELECT id, provider, account_label, status, url FROM connections WHERE org_id=? ORDER BY sort").bind(org).all();
+  return (rows.results ?? []) as unknown as ConnectionRow[];
 }
