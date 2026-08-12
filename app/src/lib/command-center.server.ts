@@ -372,7 +372,7 @@ const SEED_CONNECTIONS: Omit<ConnectionRow, "id">[] = [
   { provider: "x", account_label: "X (Twitter)", kind: "platform", status: "connected", url: "https://x.com/jdbsales3", note: "@jdbsales3" },
   { provider: "linkedin", account_label: "LinkedIn", kind: "platform", status: "connected", url: "https://linkedin.com", note: "Company profile" },
   { provider: "tiktok", account_label: "TikTok", kind: "platform", status: "connected", url: "https://tiktok.com", note: "Creator account" },
-  { provider: "tiktok_ads", account_label: "TikTok Ads", kind: "platform", status: "waiting", url: "https://business-api.tiktok.com", note: "Authorization link sent" },
+  { provider: "tiktok_ads", account_label: "TikTok Ads", kind: "platform", status: "waiting", url: "https://business-api.tiktok.com", note: "Advertiser: zeustrustaegissecurityltd0812 (ID 7673187170220916737) — auth pending" },
   { provider: "instagram", account_label: "Instagram", kind: "platform", status: "disconnected", url: "https://instagram.com", note: "Ready to connect" },
   { provider: "threads", account_label: "Threads", kind: "platform", status: "disconnected", url: "https://threads.net", note: "Ready to connect" },
   { provider: "facebook", account_label: "Facebook", kind: "platform", status: "unavailable", url: "https://facebook.com", note: "No connector in this environment" },
