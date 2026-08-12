@@ -372,7 +372,7 @@ const SEED_CONNECTIONS: Omit<ConnectionRow, "id">[] = [
   { provider: "x", account_label: "X (Twitter)", kind: "platform", status: "connected", url: "https://x.com/jdbsales3", note: "@jdbsales3" },
   { provider: "linkedin", account_label: "LinkedIn", kind: "platform", status: "connected", url: "https://linkedin.com", note: "Company profile" },
   { provider: "tiktok", account_label: "TikTok", kind: "platform", status: "connected", url: "https://tiktok.com", note: "Creator account" },
-  { provider: "tiktok_ads", account_label: "TikTok Ads", kind: "platform", status: "waiting", url: "https://business-api.tiktok.com", note: "Advertiser: zeustrustaegissecurityltd0812 (ID 7673187170220916737) — auth pending" },
+  { provider: "tiktok_ads", account_label: "TikTok Ads", kind: "platform", status: "waiting", url: "https://business-api.tiktok.com", note: "Authorization link sent" },
   { provider: "instagram", account_label: "Instagram", kind: "platform", status: "disconnected", url: "https://instagram.com", note: "Ready to connect" },
   { provider: "threads", account_label: "Threads", kind: "platform", status: "disconnected", url: "https://threads.net", note: "Ready to connect" },
   { provider: "facebook", account_label: "Facebook", kind: "platform", status: "unavailable", url: "https://facebook.com", note: "No connector in this environment" },
@@ -395,22 +395,12 @@ const SEED_CONNECTIONS: Omit<ConnectionRow, "id">[] = [
 ];
 
 const SEED_CONTACTS: { name: string; company: string; email: string | null; phone: string | null; tags: string; source: string }[] = [
-  { name: "JDB Sales Team", company: "JDB Sales / ZEUS AI", email: "jdbsale3@gmail.com", phone: "01922 445318", tags: "team,core", source: "team-directory" },
+  { name: "JDB Sales Team", company: "JDB Sales / ZEUS AI", email: "jdbsale3@gmail.com", phone: null, tags: "team,core", source: "team-directory" },
   { name: "Jill Birch", company: "ZEUSTRUSTAEGIS SECURITY LTD", email: null, phone: null, tags: "team,co-director", source: "Companies House 17391549" },
   { name: "ZEUS AI Intelligence", company: "ZEUS AI Intelligence / JDB Sales", email: null, phone: null, tags: "team,org", source: "zeusaiintelligence.org" },
   { name: "JDB Sales", company: "JDB Sales", email: null, phone: null, tags: "team,org", source: "User-provided" },
-  { name: "Skitts Estate Agents", company: "Skitts Estate Agents", email: null, phone: "01902 631151", tags: "professional,estate-agent", source: "user call schedule" },
-  { name: "Webbs Estate Agents", company: "Webbs Estate Agents", email: null, phone: "01922 929888", tags: "professional,estate-agent", source: "user call schedule" },
-  { name: "KST Accountancy", company: "KST Accountancy LLP", email: "info@kstaccountancy.co.uk", phone: "01902 630877", tags: "professional,accountancy", source: "kstaccountancy.co.uk" },
-  { name: "NHS England Commercial", company: "NHS England", email: "england.supplier@nhs.net", phone: null, tags: "nhs,commercial-route,supplier-engagement", source: "england.nhs.uk/nhs-commercial" },
-  { name: "Crown Commercial Service", company: "Crown Commercial Service (UK Government)", email: "info@crowncommercial.gov.uk", phone: "0345 410 2222", tags: "nhs,commercial-route,framework", source: "crowncommercial.gov.uk" },
-  { name: "DHSC Commercial", company: "Department of Health and Social Care", email: "ccsinbox@dhsc.gov.uk", phone: null, tags: "nhs,commercial-route", source: "Find a Tender / gov.uk" },
-  { name: "NHS SBS (Shared Business Services)", company: "NHS Shared Business Services Ltd", email: "sbs.suppliers@nhs.net", phone: "0303 123 1177", tags: "nhs,commercial-route,framework", source: "sbs.nhs.uk" },
-  { name: "Ultima Business Solutions", company: "Ultima Business Solutions Ltd", email: "enquiries@ultima.com", phone: "0333 015 8000", tags: "prospect,uk-msp,security-review", source: "ultima.com" },
-  { name: "Six Degrees", company: "Six Degrees", email: "info@6dg.co.uk", phone: "0800 012 8060", tags: "prospect,uk-msp,security-review", source: "6dg.co.uk" },
-  { name: "Littlefish", company: "Littlefish Group", email: "info@littlefish.co.uk", phone: "0344 848 4444", tags: "prospect,uk-msp,security-review", source: "littlefish.co.uk" },
-  { name: "Node4", company: "Node4 Ltd", email: "hello@node4.co.uk", phone: "0345 123 2222", tags: "prospect,uk-msp,security-review", source: "node4.co.uk" },
 ];
+
 
 
 async function ensureSeeded(org: string): Promise<void> {
@@ -431,7 +421,7 @@ async function ensureSeeded(org: string): Promise<void> {
       SEED_CONNECTIONS.map((c) =>
         stmt.bind(`conn_${c.provider}`, org, c.provider, c.account_label, c.kind, c.status, c.url, c.note)),
     );
-    const up = d.prepare("UPDATE connections SET status=?, account_label=?, url=?, note=? WHERE provider=? AND org_id=?");
+    const up = d.prepare("UPDATE connections SET status=?, account_label=?, url=?, note=? WHERE provider=? AND org_id=? AND status IN ('disconnected','waiting','needs_key')");
     await d.batch(
       SEED_CONNECTIONS.map((c) =>
         up.bind(c.status, c.account_label, c.url, c.note, c.provider, org)),
@@ -445,12 +435,12 @@ async function ensureSeeded(org: string): Promise<void> {
         stmt.bind(crypto.randomUUID(), org, c.provider, c.account_label, c.kind, c.status, c.url, c.note)),
     );
   }
-  const kc = await d.prepare("SELECT COUNT(*) c FROM contacts WHERE org_id=?").bind(org).first();
-  if (Number(kc?.c ?? 0) === 0) {
-    const stmt = d.prepare("INSERT INTO contacts (id, org_id, type, name, email, phone, tags, source) VALUES (?,?,?,?,?,?,?,?)");
+  // Idempotent: deterministic id, INSERT OR IGNORE (no dup race, no re-clobber).
+  {
+    const stmt = d.prepare("INSERT OR IGNORE INTO contacts (id, org_id, type, name, email, phone, tags, source) VALUES (?,?,?,?,?,?,?,?)");
     await d.batch(
       SEED_CONTACTS.map((c) =>
-        stmt.bind(crypto.randomUUID(), org, "company", c.name, c.email, c.phone, c.tags, c.source)),
+        stmt.bind(`contact_${Buffer.from(c.name).toString("base64url").slice(0, 24)}`, org, "company", c.name, c.email, c.phone, c.tags, c.source)),
     );
   }
 }
