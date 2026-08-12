@@ -12,6 +12,7 @@ import { appFaviconUrl, appMeta } from "@/lib/app-meta";
 import { askZeusFn, createContactFn, createDealFn, createNoteFn, createTaskFn, getDashboardFn, getProjectsFn, getConnectionsFn } from "@/lib/command-center.functions";
 import type { DashboardSnapshot } from "@/lib/command-center.functions";
 import { hasNativeSpeech, hasVoiceInput, speak, startListening, stopListening, stopSpeaking } from "@/lib/voice";
+import "../styles/zeus-sphere.css";
 
 const MODULES = [
   { name: "Task Matrix", status: "online", icon: CheckSquare },
@@ -100,17 +101,8 @@ function ZeusSphere({ listening, busy, onClick }: { listening: boolean; busy?: b
       <span className={cn("relative z-10 font-bold tracking-widest drop-shadow-[0_0_12px_rgba(0,212,255,.6)] text-sm sm:text-base", accentText)}>ZEUS</span>
     </button>
   );
-}: { listening: boolean; onClick: () => void }) {
-  return (
-    <button type="button" onClick={onClick} aria-label="Talk to ZEUS"
-      className={cn("group relative mx-auto flex h-24 w-24 items-center justify-center rounded-full border transition",
-        listening ? "border-rose-400/70 bg-rose-500/15" : "border-cyan-400/40 bg-cyan-500/10 hover:bg-cyan-500/20")}
-      style={{ boxShadow: listening ? "0 0 60px rgba(251,113,133,.55), inset 0 0 28px rgba(251,113,133,.25)" : "0 0 40px rgba(34,211,238,.35), inset 0 0 30px rgba(34,211,238,.2)" }}>
-      {listening && <span className="absolute inset-0 animate-ping rounded-full border-2 border-rose-400/50" />}
-      <span className={cn("text-2xl font-bold", listening ? "text-rose-300" : "text-cyan-300")}>ZEUS</span>
-    </button>
-  );
 }
+
 
 export function CommandCenterLayout() {
   const [prompt, setPrompt] = useState("");

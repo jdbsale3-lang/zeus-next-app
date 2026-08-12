@@ -1,0 +1,9 @@
+@keyframes zeus-spin { to { transform: rotate(360deg); } }
+@keyframes zeus-spin-rev { to { transform: rotate(-360deg); } }
+@keyframes zeus-breathe { 0%, 100% { opacity: .45; transform: scale(1); } 50% { opacity: 1; transform: scale(1.06); } }
+@keyframes zeus-scan { 0% { top: 7%; opacity: 0; } 15% { opacity: .75; } 85% { opacity: .75; } 100% { top: 93%; opacity: 0; } }
+@keyframes zeus-dot { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+@keyframes zeus-process {
+  0%, 100% { box-shadow: 0 0 18px rgba(245,158,11,.4), 0 0 44px rgba(0,212,255,.22), inset 0 0 24px rgba(245,158,11,.14); }
+  50% { box-shadow: 0 0 32px rgba(245,158,11,.8), 0 0 72px rgba(0,212,255,.5), inset 0 0 36px rgba(245,158,11,.32); }
+}
