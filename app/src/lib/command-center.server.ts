@@ -66,6 +66,7 @@ const TOOLS: LlmToolDef[] = [
   { name: "list_connections", description: "List connected accounts and integrations (email, social, SaaS) with their status.", parameters: { type: "object", properties: { status: { type: "string" } } } },
   { name: "add_project", description: "Register a new project in the portfolio.", parameters: { type: "object", properties: { name: { type: "string" }, url: { type: "string" }, category: { type: "string" }, description: { type: "string" } }, required: ["name"] } },
   { name: "update_project_status", description: "Change a project's status (live|planning|build|paused).", parameters: { type: "object", properties: { project_id: { type: "string" }, status: { type: "string" } }, required: ["project_id", "status"] } },
+  { name: "open_project", description: "Open a project or site by name (e.g. 'open AEGIS'). Returns the live URL to open.", parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] } },
 ];
 
 // ---- Execute a tool against D1 ----
@@ -178,6 +179,12 @@ async function runTool(name: string, args: Record<string, unknown>, org: string)
           .bind(args.status as string, args.project_id as string, org).run();
         return JSON.stringify({ ok: true, project_id: args.project_id, status: args.status });
       }
+      case "open_project": {
+        const q = `%${(args.query as string) ?? ""}%`;
+        const row = await d.prepare("SELECT name, url FROM projects WHERE org_id=? AND name LIKE ? LIMIT 1").bind(org, q).first();
+        if (!row || !row.url) return JSON.stringify({ ok: false, message: `No project found matching '${(args.query as string) ?? ""}'.` });
+        return JSON.stringify({ ok: true, name: row.name, url: row.url });
+      }
       default:
         return JSON.stringify({ error: `unknown tool: ${name}` });
     }
@@ -195,7 +202,7 @@ export async function askZeus(message: string) {
     mockStore.messages.push({ id: mockId, role: "user", text: message, created_at: new Date().toISOString() });
     const answer = mockAskZeus(message);
     mockStore.messages.push({ id: crypto.randomUUID(), role: "assistant", text: answer, created_at: new Date().toISOString() });
-    return { answer, messageId: mockId };
+    return { answer, messageId: mockId, openUrl: null };
   }
 
   const d = db();
@@ -217,6 +224,7 @@ export async function askZeus(message: string) {
 
   const MAX_HOPS = 6;
   let final = "";
+  let openUrl: string | null = null;
   for (let hop = 0; hop < MAX_HOPS; hop++) {
     const res = await llm.complete({ model, messages, tools: TOOLS });
     if (res.toolCalls && res.toolCalls.length > 0) {
@@ -225,6 +233,12 @@ export async function askZeus(message: string) {
       for (const tc of res.toolCalls) {
         const args = safeParse(tc.arguments);
         const result = await runTool(tc.name, args, org);
+        if (tc.name === "open_project") {
+          try {
+            const parsed = JSON.parse(result);
+            if (parsed.ok && parsed.url) openUrl = parsed.url as string;
+          } catch { /* non-JSON tool result — ignore */ }
+        }
         messages.push({ role: "tool", tool_call_id: tc.id, content: `<tool_data>${result}</tool_data>` });
       }
       continue;
@@ -239,7 +253,7 @@ export async function askZeus(message: string) {
   await d.prepare("INSERT INTO assistant_messages (id, org_id, channel, role, text) VALUES (?,?,?,?,?)")
     .bind(aid, org, "chat", "assistant", final).run();
 
-  return { answer: final, messageId: aid };
+  return { answer: final, messageId: aid, openUrl };
 }
 
 function safeParse(json: string): Record<string, unknown> {
@@ -352,8 +366,8 @@ const SEED_PROJECTS: Omit<ProjectRow, "id">[] = [
   { name: "AEGIS API Docs", slug: "aegis-api-docs", url: "https://aegis-api-docs.higgsfield.app", category: "security", status: "live", description: "AEGIS developer docs." },
   { name: "Zeus Gantt Plan", slug: "zeus-gantt-plan", url: "https://zeus-gantt-plan.higgsfield.app", category: "site", status: "live", description: "Project planning." },
   { name: "Zeus Gantt Docs", slug: "zeus-gantt-docs", url: "https://zeus-gantt-docs.higgsfield.app", category: "site", status: "live", description: "AEGIS document suite." },
-  { name: "NHS ID Card System", slug: "nhs-id-card", url: "https://zeusai-intelligence.org/nhs", category: "nhs", status: "planning", description: "50M smart cards · £24.4B 10-yr value · 28.2x ROI · secured by AEGIS." },
-  { name: "JDB Sales", slug: "jdb-sales", url: "https://jdbsales", category: "core", status: "live", description: "Sales arm & IP owner (jdbsale3@gmail.com)." },
+  { name: "NHS ID Card System", slug: "nhs-id-card", url: "https://zeusai-intelligence.higgsfield.app/nhs", category: "nhs", status: "planning", description: "50M smart cards · £24.4B 10-yr value · 28.2x ROI · secured by AEGIS." },
+  { name: "JDB Sales", slug: "jdb-sales", url: "https://zeusai-intelligence.higgsfield.app", category: "core", status: "live", description: "Sales arm & IP owner (jdbsale3@gmail.com)." },
   { name: "ZEUSTRUSTAEGISSECURITY LTD", slug: "zeustrustaegis", url: "https://find-and-update.company-information.service.gov.uk/company/17391549", category: "holding", status: "live", description: "Holding co · Companies House 17391549 · 66 Paul Street, London." },
   { name: "GS Homes", slug: "gs-homes", url: "https://gs-homes.higgsfield.app", category: "client", status: "live", description: "Client site." },
   { name: "GS Home Improvements", slug: "gs-home-improvements", url: "https://gs-home-improvements.higgsfield.app", category: "client", status: "live", description: "Client site." },

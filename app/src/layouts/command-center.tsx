@@ -162,6 +162,10 @@ export function CommandCenterLayout() {
       // Ignore stale results if the user sent a newer run or cancelled
       if (runRef.current !== myRun || cancelledRef.current) return;
       setChat((c) => [...c, { role: "assistant", text: res.answer }]);
+      if (res.openUrl) {
+        window.open(res.openUrl, "_blank", "noopener,noreferrer");
+        setChat((c) => [...c, { role: "assistant", text: `Opening ${res.openUrl} in a new tab.` }]);
+      }
       if (voiceOnRef.current) speak(res.answer, true);
     } catch (e) {
       if (runRef.current !== myRun || cancelledRef.current) return;
