@@ -127,29 +127,3 @@ export function mockCreateNote(data: { title?: string; body: string }) {
   return { id: n.id };
 }
 
-// ---- Project fleet & connection registry sandbox mirrors (no D1) ----
-export function mockProjects(): MockProject[] {
-  return [
-    { id: "p1", name: "ZEUS OS (app)", slug: "zeus-next-app", url: "https://zeus-next-app.higgsfield.app", status: "live", kind: "app" },
-    { id: "p2", name: "ZEUS AI Intelligence", slug: "zeusai-intelligence", url: "https://zeusai-intelligence.higgsfield.app", status: "live", kind: "website" },
-    { id: "p3", name: "AEGIS Security", slug: "aegis-security", url: "https://aegis-security.higgsfield.app", status: "live", kind: "website" },
-    { id: "p4", name: "AEGIS API Docs", slug: "aegis-api-docs", url: "https://aegis-api-docs.higgsfield.app", status: "live", kind: "docs" },
-    { id: "p5", name: "ZEUS Gantt Docs", slug: "zeus-gantt-docs", url: "https://zeus-gantt-docs.higgsfield.app", status: "live", kind: "docs" },
-    { id: "p6", name: "Intelligence CRM", slug: "intelligence-crm", url: "https://intelligence-crm.higgsfield.app", status: "live", kind: "website" },
-    { id: "p7", name: "ZEUS Mind", slug: "zeus-mind", url: "https://zeus-mind.higgsfield.app", status: "live", kind: "website" },
-    { id: "p8", name: "CalorieLens", slug: "calorielens", url: "https://calorielens.higgsfield.app", status: "live", kind: "website" },
-  ];
-}
-
-export function mockConnections(): MockConnection[] {
-  return [
-    { id: "c1", provider: "Gmail", accountLabel: "jdbsale3@gmail.com", status: "connected", url: null },
-    { id: "c2", provider: "YouTube", accountLabel: "ZeusAI (@jdbsale)", status: "connected", url: "https://www.youtube.com/@jdbsale" },
-    { id: "c3", provider: "X / Twitter", accountLabel: "@jdbsales3", status: "connected", url: "https://x.com/jdbsales3" },
-    { id: "c4", provider: "LinkedIn", accountLabel: "Darren Birch (JDB Sales)", status: "connected", url: "https://www.linkedin.com" },
-    { id: "c5", provider: "TikTok", accountLabel: "JDB Sales", status: "connected", url: "https://www.tiktok.com" },
-    { id: "c6", provider: "HubSpot CRM", accountLabel: "JDB Sales", status: "connected", url: null },
-    { id: "c7", provider: "Discord", accountLabel: "ZEUS server", status: "needs_auth", url: "https://pipedream.com/_static/connect.html?token=ctok_89ce2ade07454c7981edb5c0d05dd39f&connectLink=true&app=discord_bot" },
-    { id: "c8", provider: "TikTok Ads", accountLabel: "Business ads", status: "needs_auth", url: null },
-  ];
-}
