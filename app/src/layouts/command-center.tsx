@@ -386,6 +386,9 @@ export function CommandCenterLayout() {
             <a href="https://earth.google.com/web/@51.5206,-0.0843" target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-[10px] text-slate-500 hover:text-cyan-300">
               <Globe size="sm" className="text-cyan-400" /> Open in Google Earth
             </a>
+            <a href="https://www.openstreetmap.org/?mlat=51.5206&mlon=-0.0843#map=16/51.5206/-0.0843" target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-[10px] text-slate-500 hover:text-cyan-300">
+              <MapPin size="sm" className="text-cyan-400" /> Open in OpenStreetMap
+            </a>
           </div>
           <div className="rounded-xl border border-slate-800 bg-[#0d1526]/60 p-3">
             <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Automation Stack</div>
