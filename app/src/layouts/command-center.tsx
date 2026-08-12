@@ -382,7 +382,7 @@ export function CommandCenterLayout() {
         <section className="mt-5 grid gap-2 lg:grid-cols-[1.4fr_1fr]">
           <div className="rounded-xl border border-slate-800 bg-[#0d1526]/60 p-3">
             <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Headquarters — 66 Paul Street, London EC2A 4NA</div>
-            <iframe title="HQ map" src="https://maps.google.com/maps?q=66%20Paul%20Street%2C%20London%20EC2A%204NA&output=embed" className="mt-2 h-44 w-full rounded-lg opacity-80" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+            <iframe title="HQ map" src="https://www.openstreetmap.org/export/embed.html?bbox=-0.0880%2C51.5185%2C-0.0810%2C51.5235&layer=mapnik&marker=51.5206%2C-0.0843" className="mt-2 h-44 w-full rounded-lg opacity-80" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
             <a href="https://earth.google.com/web/@51.5206,-0.0843" target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-[10px] text-slate-500 hover:text-cyan-300">
               <Globe size="sm" className="text-cyan-400" /> Open in Google Earth
             </a>
