@@ -1,10 +1,6 @@
 # ZEUS voice — sandbox testing & E2E suite
 
-[![Voice E2E — Chromium · Firefox · WebKit](https://github.com/<owner>/<repo>/actions/workflows/voice-e2e.yml/badge.svg)](https://github.com/<owner>/<repo>/actions/workflows/voice-e2e.yml)
-<!-- After mirroring the repo to GitHub (see GITHUB-MIRROR.md) and the first
-     green CI run, replace <owner>/<repo> in the badge URL with the real
-     GitHub owner and repository name. Until then the badge renders "no
-     status" — expected. -->
+[![Voice E2E — Chromium · Firefox · WebKit](https://github.com/jdbsale3-lang/zeus-next-app/actions/workflows/voice-e2e.yml/badge.svg)](https://github.com/jdbsale3-lang/zeus-next-app/actions/workflows/voice-e2e.yml)
 
 This documents how to run the ZEUS Command Center locally in a **dev sandbox**
 (no platform auth, D1, or LLM required) and how to run the automated voice E2E
