@@ -376,8 +376,8 @@ const SEED_CONNECTIONS: Omit<ConnectionRow, "id">[] = [
   { provider: "instagram", account_label: "Instagram", kind: "platform", status: "disconnected", url: "https://instagram.com", note: "Ready to connect" },
   { provider: "threads", account_label: "Threads", kind: "platform", status: "disconnected", url: "https://threads.net", note: "Ready to connect" },
   { provider: "facebook", account_label: "Facebook", kind: "platform", status: "unavailable", url: "https://facebook.com", note: "No connector in this environment" },
-  { provider: "discord_bot", account_label: "Discord", kind: "saas", status: "waiting", url: "https://discord.com", note: "Authorization link sent" },
-  { provider: "whatsapp_business", account_label: "WhatsApp Business", kind: "saas", status: "waiting", url: "https://business.whatsapp.com", note: "Authorization link sent" },
+  { provider: "discord_bot", account_label: "Discord", kind: "saas", status: "connected", url: "https://discord.com", note: "Connected — server tools live" },
+  { provider: "whatsapp_business", account_label: "WhatsApp Business", kind: "saas", status: "connected", url: "https://business.whatsapp.com", note: "Connected — messaging live" },
   { provider: "slack", account_label: "Slack", kind: "saas", status: "connected", url: "https://slack.com", note: "Team notices" },
   { provider: "hubspot", account_label: "HubSpot", kind: "saas", status: "connected", url: "https://app.hubspot.com", note: "CRM sync" },
   { provider: "github", account_label: "GitHub", kind: "saas", status: "connected", url: "https://github.com/jdbsale3-lang", note: "Repos + CI" },
@@ -423,13 +423,18 @@ async function ensureSeeded(org: string): Promise<void> {
         stmt.bind(crypto.randomUUID(), org, p.name, p.slug, p.url, p.category, p.status, p.description, i)),
     );
   }
-  // Always propagate seed entries (INSERT OR IGNORE with deterministic ids) so
-  // new connectors appear even for orgs seeded before they were added.
+  // Always propagate seed entries: INSERT OR IGNORE (new connectors reach
+  // already-seeded orgs) then UPDATE (live statuses/notes win over stale rows).
   {
     const stmt = d.prepare("INSERT OR IGNORE INTO connections (id, org_id, provider, account_label, kind, status, url, note) VALUES (?,?,?,?,?,?,?,?)");
     await d.batch(
       SEED_CONNECTIONS.map((c) =>
         stmt.bind(`conn_${c.provider}`, org, c.provider, c.account_label, c.kind, c.status, c.url, c.note)),
+    );
+    const up = d.prepare("UPDATE connections SET status=?, account_label=?, url=?, note=? WHERE provider=? AND org_id=?");
+    await d.batch(
+      SEED_CONNECTIONS.map((c) =>
+        up.bind(c.status, c.account_label, c.url, c.note, c.provider, org)),
     );
   }
   const cc = await d.prepare("SELECT COUNT(*) c FROM connections WHERE org_id=?").bind(org).first();
