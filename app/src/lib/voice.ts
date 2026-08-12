@@ -42,6 +42,10 @@ export function hasVoiceInput(): boolean {
   return hasNativeSpeech() || recorderSupported();
 }
 
+export function stopSpeaking(): void {
+  if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+}
+
 export function stopListening(): void {
   if (recognizer) {
     try {

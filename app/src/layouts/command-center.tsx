@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { appFaviconUrl, appMeta } from "@/lib/app-meta";
 import { askZeusFn, createContactFn, createDealFn, createNoteFn, createTaskFn, getDashboardFn, getProjectsFn, getConnectionsFn } from "@/lib/command-center.functions";
 import type { DashboardSnapshot } from "@/lib/command-center.functions";
-import { hasNativeSpeech, hasVoiceInput, speak, startListening, stopListening } from "@/lib/voice";
+import { hasNativeSpeech, hasVoiceInput, speak, startListening, stopListening, stopSpeaking } from "@/lib/voice";
 
 const MODULES = [
   { name: "Task Matrix", status: "online", icon: CheckSquare },
@@ -63,7 +63,44 @@ const projectStatusColor: Record<string, string> = {
   paused: "text-slate-400 border-slate-600 bg-slate-700/20",
 };
 
-function ZeusSphere({ listening, onClick }: { listening: boolean; onClick: () => void }) {
+let ringNum = 0;
+function ZeusSphere({ listening, busy, onClick }: { listening: boolean; busy?: boolean; onClick: () => void }) {
+  const processing = busy && !listening;
+  const accent = processing ? "#F59E0B" : listening ? "#F43F5E" : "#00D4FF";
+  const accentText = processing ? "text-amber-300" : listening ? "text-rose-300" : "text-cyan-200";
+  const coreGlow = processing ? "rgba(245,158,11,.28)" : listening ? "rgba(251,113,133,.25)" : "rgba(0,212,255,.25)";
+  return (
+    <button type="button" onClick={onClick} aria-label="Talk to ZEUS" aria-busy={busy}
+      className={cn(
+        "group relative mx-auto flex h-36 w-36 items-center justify-center rounded-full border transition sm:h-40 sm:w-40",
+        processing
+          ? "border-amber-400/70 bg-amber-500/10"
+          : listening
+            ? "border-rose-400/70 bg-rose-500/15"
+            : "border-cyan-400/40 bg-cyan-500/10 hover:bg-cyan-500/20",
+      )}
+      style={{
+        boxShadow: processing
+          ? "0 0 30px rgba(245,158,11,.55), 0 0 64px rgba(0,212,255,.28)"
+          : listening
+            ? "0 0 64px rgba(251,113,133,.6), inset 0 0 30px rgba(251,113,133,.28)"
+            : "0 0 46px rgba(0,212,255,.4), inset 0 0 34px rgba(0,212,255,.22)",
+      }}>
+      {/* layered J.A.R.V.I.S. arcs — 3 rings, different speeds/directions */}
+      <span aria-hidden className="pointer-events-none absolute inset-1.5 rounded-full border-2 border-transparent border-t-cyan-400/80 border-r-cyan-400/20 border-b-cyan-400/5" style={{ animation: "zeus-spin 6s linear infinite" }} />
+      <span aria-hidden className="pointer-events-none absolute inset-4 rounded-full border border-transparent border-t-rose-400/60 border-l-rose-400/15" style={{ animation: "zeus-spin-rev 9s linear infinite" }} />
+      <span aria-hidden className="pointer-events-none absolute inset-7 rounded-full border border-transparent border-b-cyan-300/70 border-l-cyan-300/25" style={{ animation: "zeus-spin 4s linear infinite reverse" }} />
+      {listening && <span aria-hidden className="pointer-events-none absolute inset-0 animate-ping rounded-full border-2 border-rose-400/50" />}
+      {processing && <span aria-hidden className="pointer-events-none absolute -inset-0.5 rounded-full border-2 border-dashed border-amber-400/40" style={{ animation: "zeus-spin 5s linear infinite" }} />}
+      {/* core glow + scan line + particles + wordmark */}
+      <span aria-hidden className="pointer-events-none absolute inset-6 rounded-full" style={{ background: `radial-gradient(circle, ${coreGlow} 0%, transparent 70%)`, animation: "zeus-breathe 2.6s ease-in-out infinite" }} />
+      <span aria-hidden className="pointer-events-none absolute left-1/2 h-px w-3/4 -translate-x-1/2 bg-gradient-to-b from-transparent to-cyan-300/70" style={{ animation: "zeus-scan 3.4s ease-in-out infinite" }} />
+      <span aria-hidden className="pointer-events-none absolute h-1.5 w-1.5 rounded-full" style={{ top: "22%", right: "22%", background: accent, boxShadow: "0 0 10px rgba(0,212,255,.9)", animation: "zeus-dot 1.6s ease-in-out infinite" }} />
+      <span aria-hidden className="pointer-events-none absolute h-1 w-1 rounded-full" style={{ bottom: "24%", left: "28%", background: accent, opacity: .8, animation: "zeus-dot 2.2s ease-in-out infinite" }} />
+      <span className={cn("relative z-10 font-bold tracking-widest drop-shadow-[0_0_12px_rgba(0,212,255,.6)] text-sm sm:text-base", accentText)}>ZEUS</span>
+    </button>
+  );
+}: { listening: boolean; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} aria-label="Talk to ZEUS"
       className={cn("group relative mx-auto flex h-24 w-24 items-center justify-center rounded-full border transition",
@@ -119,6 +156,7 @@ export function CommandCenterLayout() {
     .sort((a, b) => Number(b.status === "connected") - Number(a.status === "connected"));
 
   const ask = async (text?: string) => {
+    stopSpeaking();
     const q = (text ?? prompt).trim();
     if (!q || busy) return;
     setPrompt("");
@@ -404,7 +442,7 @@ export function CommandCenterLayout() {
 
         {/* Bottom: Zeus sphere */}
         <div className="mt-8 flex flex-col items-center gap-2">
-          <ZeusSphere listening={listening} onClick={toggleVoiceInput} />
+          <ZeusSphere listening={listening} busy={busy} onClick={toggleVoiceInput} />
           <p className="text-[10px] text-slate-500">
             {listening
               ? "● LISTENING — SPEAK YOUR COMMAND ●"
