@@ -423,8 +423,17 @@ async function ensureSeeded(org: string): Promise<void> {
         stmt.bind(crypto.randomUUID(), org, p.name, p.slug, p.url, p.category, p.status, p.description, i)),
     );
   }
+  // Always propagate seed entries (INSERT OR IGNORE with deterministic ids) so
+  // new connectors appear even for orgs seeded before they were added.
+  {
+    const stmt = d.prepare("INSERT OR IGNORE INTO connections (id, org_id, provider, account_label, kind, status, url, note) VALUES (?,?,?,?,?,?,?,?)");
+    await d.batch(
+      SEED_CONNECTIONS.map((c) =>
+        stmt.bind(`conn_${c.provider}`, org, c.provider, c.account_label, c.kind, c.status, c.url, c.note)),
+    );
+  }
   const cc = await d.prepare("SELECT COUNT(*) c FROM connections WHERE org_id=?").bind(org).first();
-  if (Number(cc?.c ?? 0) === 0) {
+  if (Number(cc?.c ?? 0) === 0 && false) {
     const stmt = d.prepare("INSERT INTO connections (id, org_id, provider, account_label, kind, status, url, note) VALUES (?,?,?,?,?,?,?,?)");
     await d.batch(
       SEED_CONNECTIONS.map((c) =>
