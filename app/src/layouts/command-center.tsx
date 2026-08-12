@@ -287,6 +287,18 @@ export function CommandCenterLayout() {
                   {voiceOn ? "VOICE REPLIES ON" : "VOICE REPLIES OFF"}
                 </button>
               </div>
+              <div className="mb-3 flex flex-col items-center gap-1.5">
+                <ZeusSphere listening={listening} busy={busy} onClick={toggleVoiceInput} />
+                <p className="text-[10px] text-slate-500">
+                  {listening
+                    ? "● LISTENING — SPEAK YOUR COMMAND ●"
+                    : voiceAvailable
+                      ? nativeSpeech
+                        ? "▲ TAP THE SPHERE AND TALK TO ZEUS ▲"
+                        : "▲ TAP THE SPHERE AND RECORD — VOICE VIA RECORDING ▲"
+                      : "Voice input isn't supported in this browser — use the chat box"}
+                </p>
+              </div>
               <div className="mb-2 flex-1 space-y-2 overflow-y-auto" style={{ maxHeight: 220 }}>
                 {chat.length === 0 ? (
                   <>
@@ -432,19 +444,6 @@ export function CommandCenterLayout() {
           </div>
         </section>
 
-        {/* Bottom: Zeus sphere */}
-        <div className="mt-8 flex flex-col items-center gap-2">
-          <ZeusSphere listening={listening} busy={busy} onClick={toggleVoiceInput} />
-          <p className="text-[10px] text-slate-500">
-            {listening
-              ? "● LISTENING — SPEAK YOUR COMMAND ●"
-              : voiceAvailable
-                ? nativeSpeech
-                  ? "▲ TAP THE SPHERE AND TALK TO ZEUS ▲"
-                  : "▲ TAP THE SPHERE AND RECORD — VOICE VIA RECORDING ▲"
-                : "Voice input isn't supported in this browser — use the chat box"}
-          </p>
-        </div>
 
         <footer className="mt-8 flex items-center justify-between border-t border-slate-800 pt-3 text-[9px] text-slate-600">
           <span>DATA STREAM — ENCRYPTION: TLS + HMAC SESSIONS</span>
