@@ -11,11 +11,17 @@ on:
 
 jobs:
   voice-e2e:
+    name: ${{ matrix.engine }} — voice E2E
     runs-on: ubuntu-latest
-    # Official Playwright image: all three browsers + system deps preinstalled
-    # (WebKit's WPE automation stack included — no LD_LIBRARY_PATH gymnastics).
+    # Official Playwright image: browsers + system deps preinstalled,
+    # including WebKit's WPE automation stack (not available in local
+    # sandboxes without root — see app/tests/e2e/README.md §3c).
     container:
       image: mcr.microsoft.com/playwright:v1.62.1-noble
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [chromium, firefox, webkit]
     defaults:
       run:
         working-directory: app
@@ -30,9 +36,20 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Voice E2E — DEV SANDBOX mock on all browsers
-        # The suite boots the app itself (VITE_ZEUS_MOCK=1 webServer in
-        # playwright.config.ts) and runs chromium, firefox and webkit projects.
-        run: bun run test:e2e
+      - name: Voice E2E — DEV SANDBOX mock on ${{ matrix.engine }}
+        # The suite boots the Vite dev server itself in VITE_ZEUS_MOCK=1
+        # sandbox mode (playwright.config.ts webServer); this project runs
+        # one engine per matrix leg. On firefox/webkit the harness removes
+        # native SpeechRecognition so the real MediaRecorder fallback path
+        # is exercised.
+        run: bun run test:e2e -- --project=${{ matrix.engine }}
         env:
           CI: "1"
+
+      - name: Upload failure traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: voice-e2e-${{ matrix.engine }}-traces
+          path: app/test-results/
+          retention-days: 7

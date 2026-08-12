@@ -45,7 +45,7 @@ mkdir -p ~/pw-libs && cd ~/pw-libs
 # Fetch the bookworm index and pull the exact .deb filenames
 curl -s http://deb.debian.org/debian/dists/bookworm/main/binary-amd64/Packages.gz -o P.gz
 for pkg in libatk1.0-0 libatk-bridge2.0-0 libatspi2.0-0 libxcomposite1 libxdamage1; do
-  gzip -dc P.gz | awk -v p="^Package: $pkg$" '$0 ~ p {f=1} f && /^Filename:/ {print $2; exit}' >> files.txt
+  gzip -dc P.gz | awk -v p="^Package: $pkg$" '$0 ~ p {f=1} f && /^Filename:/ {print $2; exit}' > files.txt
 done
 while read -r f; do [ -n "$f" ] && curl -sO "http://deb.debian.org/debian/$f"; done < files.txt
 for f in *.deb; do dpkg-deb -x "$f" .; done
@@ -83,13 +83,23 @@ injects the Web Speech API fakes — and on Firefox/WebKit it also removes any
 native `SpeechRecognition`, which forces the app to take its real
 MediaRecorder → server-transcription fallback: the genuine Firefox/Safari story.
 
+In THIS sandbox, `webkit` cannot run (§3c) — use the explicit project form to
+avoid an all-engines run failing on it:
+
+```bash
+LD_LIBRARY_PATH="$HOME/pw-libs/usr/lib/x86_64-linux-gnu" bun run test:e2e -- --project=chromium
+LD_LIBRARY_PATH="$HOME/pw-libs/usr/lib/x86_64-linux-gnu" bun run test:e2e -- --project=firefox
+```
+
 ### 3b. CI
 
 `.github/workflows/voice-e2e.yml` runs the suite on all three browsers after
 every push to `app/**`, on the official `mcr.microsoft.com/playwright:v1.62.1-noble`
 image (all browsers + system deps preinstalled — including WebKit's WPE
-automation stack). The workflow activates wherever this repo runs GitHub
-Actions.
+automation stack). It runs one matrix leg per engine
+(`--project=<engine>`), keeps legs from blocking each other (`fail-fast:
+false`), and uploads failure traces as artifacts. The workflow activates
+wherever this repo runs GitHub Actions.
 
 ### 3c. WebKit in THIS sandbox (known limitation)
 
