@@ -28,8 +28,9 @@ export type ProjectRow = {
   name: string;
   slug: string | null;
   url: string | null;
+  category: string;
   status: string;
-  kind: string;
+  description: string | null;
 };
 
 export type ConnectionRow = {
