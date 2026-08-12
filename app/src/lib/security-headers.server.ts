@@ -20,7 +20,7 @@ export function applySecurityHeaders(response: Response): Response {
   headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
   headers.set("X-Content-Type-Options", "nosniff");
   headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-  headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  headers.set("Permissions-Policy", "microphone=(self), camera=(), geolocation=()");
   headers.set("X-XSS-Protection", "0");
   return new Response(response.body, {
     status: response.status,

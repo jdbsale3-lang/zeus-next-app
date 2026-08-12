@@ -6,11 +6,12 @@ import { Loader } from "@higgsfield/quanta/loader";
 import { Textarea } from "@higgsfield/quanta/textarea";
 import { Typography } from "@higgsfield/quanta/typography";
 import { Icon } from "@higgsfield/quanta/icon";
-import { Sparkle, Shield, Activity, Gauge, Radio, Zap, Database, Users, Briefcase, CheckSquare, FileText, Wallet, Brain, LayoutGrid, MessageSquare, Bell, Calendar, Inbox, FolderOpen, Video, Newspaper, Headphones, Webhook, BarChart3, Clock, BookOpen, HeartPulse, Lock } from "lucide-react";
+import { Sparkle, Shield, Activity, Gauge, Radio, Zap, Database, Users, Briefcase, CheckSquare, FileText, Wallet, Brain, LayoutGrid, MessageSquare, Bell, Calendar, Inbox, FolderOpen, Video, Newspaper, Headphones, Webhook, BarChart3, Clock, BookOpen, HeartPulse, Lock, Mic, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { appFaviconUrl, appMeta } from "@/lib/app-meta";
 import { askZeusFn, createContactFn, createDealFn, createNoteFn, createTaskFn, getDashboardFn } from "@/lib/command-center.functions";
 import type { DashboardSnapshot } from "@/lib/command-center.functions";
+import { isVoiceSupported, speak, startListening, stopListening } from "@/lib/voice";
 
 const MODULES = [
   { name: "Task Matrix", status: "online", icon: CheckSquare },
@@ -55,12 +56,14 @@ const statusColor: Record<string, string> = {
   online: "bg-emerald-400", standby: "bg-amber-400", attention: "bg-rose-400",
 };
 
-function ZeusSphere({ onClick }: { onClick: () => void }) {
+function ZeusSphere({ listening, onClick }: { listening: boolean; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} aria-label="Talk to ZEUS"
-      className="group mx-auto flex h-24 w-24 items-center justify-center rounded-full border border-cyan-400/40 bg-cyan-500/10 transition hover:bg-cyan-500/20"
-      style={{ boxShadow: "0 0 40px rgba(34,211,238,.35), inset 0 0 30px rgba(34,211,238,.2)" }}>
-      <span className="text-2xl font-bold text-cyan-300">ZEUS</span>
+    <button type="button" onClick={onClick} aria-label={listening ? "Stop listening" : "Talk to ZEUS"}
+      className={cn("group relative mx-auto flex h-24 w-24 items-center justify-center rounded-full border transition",
+        listening ? "border-rose-400/70 bg-rose-500/15" : "border-cyan-400/40 bg-cyan-500/10 hover:bg-cyan-500/20")}
+      style={{ boxShadow: listening ? "0 0 60px rgba(251,113,133,.55), inset 0 0 28px rgba(251,113,133,.25)" : "0 0 40px rgba(34,211,238,.35), inset 0 0 30px rgba(34,211,238,.2)" }}>
+      {listening && <span className="absolute inset-0 animate-ping rounded-full border-2 border-rose-400/50" />}
+      <span className={cn("text-2xl font-bold", listening ? "text-rose-300" : "text-cyan-300")}>ZEUS</span>
     </button>
   );
 }
@@ -72,15 +75,19 @@ export function CommandCenterLayout() {
   const [error, setError] = useState<string | null>(null);
   const runRef = useRef(0);
   const cancelledRef = useRef(false);
+  const [listening, setListening] = useState(false);
+  const [interim, setInterim] = useState("");
+  const [voiceOn, setVoiceOn] = useState(true);
+  const voiceSupported = useMemo(() => isVoiceSupported(), []);
 
   const { data: snapshot, isLoading } = useQuery({
     queryKey: ["zeus-dashboard"],
     queryFn: () => getDashboardFn(),
   });
 
-  const ask = async () => {
-    if (!prompt.trim() || busy) return;
-    const q = prompt;
+  const ask = async (text?: string) => {
+    const q = (text ?? prompt).trim();
+    if (!q || busy) return;
     setPrompt("");
     setChat((c) => [...c, { role: "user", text: q }]);
     setError(null);
@@ -92,6 +99,7 @@ export function CommandCenterLayout() {
       // Ignore stale results if the user sent a newer run or cancelled
       if (runRef.current !== myRun || cancelledRef.current) return;
       setChat((c) => [...c, { role: "assistant", text: res.answer }]);
+      if (voiceOn) speak(res.answer, true);
     } catch (e) {
       if (runRef.current !== myRun || cancelledRef.current) return;
       setError((e as Error)?.message ?? "Request failed");
@@ -106,6 +114,38 @@ export function CommandCenterLayout() {
     runRef.current++; // invalidate the in-flight run
     setBusy(false);
     setChat((c) => [...c, { role: "assistant", text: "⏹ Run stopped — what next?" }]);
+  };
+
+  const toggleVoiceInput = () => {
+    if (!voiceSupported) {
+      setError("Voice input needs Chrome or Edge — use the text box for now.");
+      return;
+    }
+    if (busy || listening) {
+      stopListening();
+      setListening(false);
+      setInterim("");
+      return;
+    }
+    setListening(true);
+    setError(null);
+    startListening({
+      onInterim: (t) => setInterim(t),
+      onFinal: (t) => {
+        setInterim("");
+        setListening(false);
+        ask(t);
+      },
+      onEnd: () => {
+        setListening(false);
+        setInterim("");
+      },
+      onError: (msg) => {
+        setListening(false);
+        setInterim("");
+        setError(msg);
+      },
+    });
   };
 
   return (
@@ -161,9 +201,18 @@ export function CommandCenterLayout() {
 
             {/* AI Assistant */}
             <div className="flex flex-1 flex-col rounded-xl border border-cyan-500/30 bg-[#0d1526]/70 p-4">
-              <div className="mb-2 flex items-center gap-2">
-                <Icon as={Sparkle} size="sm" className="text-cyan-300" />
-                <h2 className="text-xs font-semibold uppercase tracking-widest text-cyan-300">ZEUS Live AI</h2>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Icon as={Sparkle} size="sm" className="text-cyan-300" />
+                  <h2 className="text-xs font-semibold uppercase tracking-widest text-cyan-300">ZEUS Live AI</h2>
+                </div>
+                <button type="button" onClick={() => setVoiceOn((v) => !v)}
+                  className={cn("flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[9px] font-semibold tracking-widest",
+                    voiceOn ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : "border-slate-700 bg-slate-800/60 text-slate-500")}
+                  aria-pressed={voiceOn}>
+                  <Icon as={voiceOn ? Volume2 : VolumeX} size="sm" />
+                  {voiceOn ? "VOICE REPLIES ON" : "VOICE REPLIES OFF"}
+                </button>
               </div>
               <div className="mb-2 flex-1 space-y-2 overflow-y-auto" style={{ maxHeight: 220 }}>
                 {chat.length === 0 ? (
@@ -192,13 +241,24 @@ export function CommandCenterLayout() {
                     <button type="button" onClick={() => setError(null)} className="rounded border border-rose-500/40 px-2 py-0.5 text-[10px] hover:bg-rose-500/20">Dismiss</button>
                   </div>
                 )}
+                {listening && (
+                  <div className="flex items-center gap-2 rounded-lg border border-rose-400/40 bg-rose-500/10 px-2 py-1.5 text-[11px] text-rose-200">
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-rose-400" />
+                    <span>{interim || "Listening… speak your command"}</span>
+                  </div>
+                )}
               </div>
               <div className="flex items-end gap-2">
                 <Textarea label="Command ZEUS" value={prompt} onChange={(e) => setPrompt(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(); } }} rows={1} />
+                {voiceSupported && (
+                  <Button variant={listening ? "marketingPrimary" : "tertiary"} size="md" onClick={toggleVoiceInput} aria-label={listening ? "Stop listening" : "Speak your command"}>
+                    <Icon as={Mic} size="sm" className={listening ? "animate-pulse" : ""} />
+                  </Button>
+                )}
                 {busy ? (
                   <Button variant="marketingPrimary" size="md" onClick={cancel}>Stop</Button>
                 ) : (
-                  <Button variant="marketingPrimary" size="md" onClick={ask} disabled={!prompt.trim()}>Ask</Button>
+                  <Button variant="marketingPrimary" size="md" onClick={() => ask()} disabled={!prompt.trim()}>Ask</Button>
                 )}
               </div>
             </div>
@@ -225,8 +285,10 @@ export function CommandCenterLayout() {
 
         {/* Bottom: Zeus sphere */}
         <div className="mt-8 flex flex-col items-center gap-2">
-          <ZeusSphere onClick={() => { setChat((c) => [...c, { role: "assistant", text: "ZEUS online. What shall we run today?" }]); }} />
-          <p className="text-[10px] text-slate-500">▲ CLICK THE SPHERE TO TALK TO ZEUS ▲</p>
+          <ZeusSphere listening={listening} onClick={toggleVoiceInput} />
+          <p className="text-[10px] text-slate-500">
+            {listening ? "● LISTENING — SPEAK YOUR COMMAND ●" : voiceSupported ? "▲ TAP THE SPHERE AND TALK TO ZEUS ▲" : "Voice input needs Chrome or Edge — use the chat box"}
+          </p>
         </div>
 
         <footer className="mt-8 flex items-center justify-between border-t border-slate-800 pt-3 text-[9px] text-slate-600">
