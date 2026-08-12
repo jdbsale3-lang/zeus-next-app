@@ -426,10 +426,10 @@ export function CommandCenterLayout() {
             <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Headquarters — 66 Paul Street, London EC2A 4NA</div>
             <iframe title="HQ map" src="https://www.openstreetmap.org/export/embed.html?bbox=-0.0880%2C51.5185%2C-0.0810%2C51.5235&layer=mapnik&marker=51.5206%2C-0.0843" className="mt-2 h-44 w-full rounded-lg opacity-80" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
             <a href="https://earth.google.com/web/@51.5206,-0.0843" target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-[10px] text-slate-500 hover:text-cyan-300">
-              <Globe size="2xs" className="text-cyan-400" /> Open in Google Earth
+              <Globe size={24} className="text-cyan-400" /> Open in Google Earth
             </a>
             <a href="https://www.openstreetmap.org/?mlat=51.5206&mlon=-0.0843#map=16/51.5206/-0.0843" target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-[10px] text-slate-500 hover:text-cyan-300">
-              <MapPin size="2xs" className="text-cyan-400" /> Open in OpenStreetMap
+              <MapPin size={24} className="text-cyan-400" /> Open in OpenStreetMap
             </a>
           </div>
           <div className="rounded-xl border border-slate-800 bg-[#0d1526]/60 p-3">
