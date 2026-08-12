@@ -212,7 +212,7 @@ export function CommandCenterLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a1120] text-slate-100 data-[theme=default-dark]">
+    <div className="flex min-h-screen items-center justify-center bg-[#0a1120] text-slate-100 data-[theme=default-dark]">
       <div className="mx-auto w-full max-w-[1400px] px-4 py-5">
         {/* Top bar */}
         <header className="mb-5 flex items-center justify-between rounded-xl border border-slate-800 bg-[#0d1526]/80 px-4 py-3">
