@@ -77,10 +77,3 @@ export const transcribeVoiceFn = createServerFn({ method: "POST" })
   .validator(z.object({ audio: z.string().min(32).max(8_000_000), mimeType: z.string().min(1).max(64) }))
   .handler(({ data }) => transcribeVoice(data.audio, data.mimeType));
 
-export const getProjectsFn = createServerFn({ method: "POST" }).handler(
-  () => getProjects(),
-);
-
-export const getConnectionsFn = createServerFn({ method: "POST" }).handler(
-  () => getConnections(),
-);
