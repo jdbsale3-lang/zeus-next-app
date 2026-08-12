@@ -5,10 +5,7 @@ import { test, expect, type Page } from "@playwright/test";
 // injects deterministic fakes via addInitScript and asserts on the app's
 // behavior around them — which is exactly the code path a real mic exercises.
 
-const MIC = '[aria-label="Speak your command"]';
-// While listening, BOTH the mic button and the sphere flip their label; the
-// mic button is the only one with a title attribute, so scope to it.
-const STOP = '[aria-label="Stop listening"][title]';
+const MIC = '[aria-label="Voice input"]';
 const SPHERE = '[aria-label="Talk to ZEUS"]';
 const LISTENING = /Listening… speak your command|Recording… tap the mic again when done/;
 const TRANSCRIPT = "Show my open tasks";
@@ -149,7 +146,7 @@ test("listening state shows while mic is active", async ({ page }) => {
   await page.goto("/");
   await page.locator(MIC).click();
   await expect(page.getByText(LISTENING)).toBeVisible();
-  await page.locator(STOP).click(); // stop listening
+  await page.locator(MIC).click(); // stop listening
   await expect(page.getByText(LISTENING)).toHaveCount(0);
 });
 
@@ -188,7 +185,7 @@ test("Firefox/Safari fallback: records audio, transcribes server-side, replies",
 
   await page.locator(MIC).click();
   await expect(page.getByText(/Recording… tap the mic again when done/)).toBeVisible();
-  await page.locator(STOP).click(); // stop → transcribe → ask
+  await page.locator(MIC).click(); // stop → transcribe → ask
 
   await expect(page.getByText(TRANSCRIPT)).toBeVisible();
   await expect(page.getByText(MOCK_REPLY)).toBeVisible();

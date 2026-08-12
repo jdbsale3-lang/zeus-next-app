@@ -58,7 +58,7 @@ const statusColor: Record<string, string> = {
 
 function ZeusSphere({ listening, onClick }: { listening: boolean; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} aria-label={listening ? "Stop listening" : "Talk to ZEUS"}
+    <button type="button" onClick={onClick} aria-label="Talk to ZEUS"
       className={cn("group relative mx-auto flex h-24 w-24 items-center justify-center rounded-full border transition",
         listening ? "border-rose-400/70 bg-rose-500/15" : "border-cyan-400/40 bg-cyan-500/10 hover:bg-cyan-500/20")}
       style={{ boxShadow: listening ? "0 0 60px rgba(251,113,133,.55), inset 0 0 28px rgba(251,113,133,.25)" : "0 0 40px rgba(34,211,238,.35), inset 0 0 30px rgba(34,211,238,.2)" }}>
@@ -260,7 +260,7 @@ export function CommandCenterLayout() {
                   </div>
                 )}
                 {listening && (
-                  <div className="flex items-center gap-2 rounded-lg border border-rose-400/40 bg-rose-500/10 px-2 py-1.5 text-[11px] text-rose-200">
+                  <div aria-live="polite" className="flex items-center gap-2 rounded-lg border border-rose-400/40 bg-rose-500/10 px-2 py-1.5 text-[11px] text-rose-200">
                     <span className="h-2 w-2 animate-pulse rounded-full bg-rose-400" />
                     <span>{interim || (nativeSpeech ? "Listening… speak your command" : "Recording… tap the mic again when done")}</span>
                   </div>
@@ -270,8 +270,8 @@ export function CommandCenterLayout() {
                 <Textarea label="Command ZEUS" value={prompt} onChange={(e) => setPrompt(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(); } }} rows={1} />
                 {voiceAvailable && (
                   <Button variant={listening ? "marketingPrimary" : "tertiary"} size="md" onClick={toggleVoiceInput}
-                    aria-label={listening ? "Stop listening" : "Speak your command"}
-                    title={nativeSpeech ? "Speak your command" : "Record your command"}>
+                    aria-label="Voice input"
+                    title={listening ? "Stop listening" : nativeSpeech ? "Speak your command" : "Record your command"}>
                     <Icon as={Mic} size="sm" className={listening ? "animate-pulse" : ""} />
                   </Button>
                 )}
