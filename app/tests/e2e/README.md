@@ -55,17 +55,76 @@ for f in *.deb; do dpkg-deb -x "$f" .; done
 > `/home/pw-libs/usr/lib/x86_64-linux-gnu/`. Verify with:
 > `LD_LIBRARY_PATH="$HOME/pw-libs/usr/lib/x86_64-linux-gnu" <chromium> --version`.
 
-## 3. Installing the browser + running the suite
+## 3. Installing the browsers + running the suite
 
 ```bash
 cd app
-bunx playwright install chromium   # downloads headless Chromium
+bunx playwright install chromium firefox webkit   # Chrome/Edge + Firefox + Safari-engine
+```
+
+Chromium and Firefox both run in this sandbox (see §3d for Firefox's one extra
+dep). Run all three projects, or a single engine:
+
+```bash
 LD_LIBRARY_PATH="$HOME/pw-libs/usr/lib/x86_64-linux-gnu" bun run test:e2e
+LD_LIBRARY_PATH="$HOME/pw-libs/usr/lib/x86_64-linux-gnu" bunx playwright test --project=firefox
+LD_LIBRARY_PATH="$HOME/pw-libs/usr/lib/x86_64-linux-gnu" bunx playwright test --project=webkit
 ```
 
 The `webServer` in `playwright.config.ts` boots the app itself in sandbox mode
 on `:3001` (pinned to `127.0.0.1` — vite binds IPv4 there), so you don't start
 a server first.
+
+### 3a. The three browser projects
+
+`playwright.config.ts` defines `chromium`, `firefox`, and `webkit` projects and
+runs the **same suite** on each. That is valid on all three because the harness
+injects the Web Speech API fakes — and on Firefox/WebKit it also removes any
+native `SpeechRecognition`, which forces the app to take its real
+MediaRecorder → server-transcription fallback: the genuine Firefox/Safari story.
+
+### 3b. CI
+
+`.github/workflows/voice-e2e.yml` runs the suite on all three browsers after
+every push to `app/**`, on the official `mcr.microsoft.com/playwright:v1.62.1-noble`
+image (all browsers + system deps preinstalled — including WebKit's WPE
+automation stack). The workflow activates wherever this repo runs GitHub
+Actions.
+
+### 3c. WebKit in THIS sandbox (known limitation)
+
+WebKit's WPE host cannot open its automation session here
+(`WebKitWebView is-controlled-by-automation set but automation is not allowed
+in the context` → immediate exit): the sandbox lacks the WPE compositing stack.
+This is an environment limitation, not a code or suite defect — the same bundle
+runs cleanly on the CI image (§3b), which is where the `webkit` project is
+meant to execute. Locally, run the `chromium` and `firefox` projects; leave
+`webkit` for CI.
+
+### 3d. Firefox's extra dependency
+
+Playwright's Firefox needs GTK3 (`libgtk-3.so.0`, `libgdk-3.so.0`). Vendor it
+into the same prefix:
+
+```bash
+cd ~/pw-libs
+curl -s http://deb.debian.org/debian/dists/bookworm/main/binary-amd64/Packages.gz -o P.gz
+f=$(gzip -dc P.gz | awk -v p="^Package: libgtk-3-0$" '$0 ~ p {f=1} f && /^Filename:/ {print $2; exit}')
+curl -sO "http://deb.debian.org/debian/$f"
+dpkg-deb -x "$(basename "$f")" .
+```
+
+For WebKit, the helper script `fetch.sh` in `~/pw-libs` downloads any Debian
+package by name into the prefix and re-checks what is still missing (this
+sandbox needed four batches: GTK4, graphene, libevent, gstreamer GL +
+codecparsers, libavif, libmanette, libenchant, libsecret, libgles2 + the
+transitive tail). After resolving, symlink the prefix libs into the WPE
+bundle's `lib/` so the bundle-owned `LD_LIBRARY_PATH` finds them:
+
+```bash
+ln -sf /home/pw-libs/usr/lib/x86_64-linux-gnu/*.so* \
+  ~/.cache/ms-playwright/webkit-*/minibrowser-wpe/lib/
+```
 
 ## 4. What the suite covers (`tests/e2e/voice.spec.ts`)
 
