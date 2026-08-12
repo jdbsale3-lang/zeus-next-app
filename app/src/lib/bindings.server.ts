@@ -24,6 +24,10 @@ type AppEnv = {
   CONTAINER?: DurableObjectNamespace;
   HF_ENV?: string;
   APP_SLUG?: string;
+  // Secret: OpenAI Whisper API key for cross-browser (Firefox/Safari) voice
+  // transcription. Unset → those browsers get a clear "not configured" error;
+  // Chrome/Edge voice needs no key (native SpeechRecognition).
+  OPENAI_API_KEY?: string;
 };
 
 export function bindings(): AppEnv {

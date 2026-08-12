@@ -1,9 +1,21 @@
 import { createLlmClient } from "@higgsfield/fnf";
 import type { LlmMessage, LlmToolCall, LlmToolDef } from "@higgsfield/fnf";
 import { bindings } from "./bindings.server";
+import {
+  DEV_MOCK,
+  DEV_ORG,
+  mockAskZeus,
+  mockCreateContact,
+  mockCreateDeal,
+  mockCreateNote,
+  mockCreateTask,
+  mockDashboard,
+  mockStore,
+} from "./dev-mock.server";
 
 // ---- Auth: resolve the current org id from the fnf user proxy ----
 async function currentOrgId(): Promise<string> {
+  if (DEV_MOCK) return DEV_ORG;
   const res = await fetch("https://fnf.internal/user");
   if (res.status !== 200) throw new Error("unauthorized");
   const user = (await res.json()) as { id?: string; email?: string };
@@ -16,6 +28,21 @@ function db() {
   const { DB } = bindings();
   if (!DB) throw new Error("D1 not bound");
   return DB;
+}
+
+// ---- Abuse guard: cap commands per org so the LLM loop can't burn credits ----
+const COMMAND_RATE_MAX = 15;
+export async function assertNotRateLimited(): Promise<void> {
+  const d = db();
+  const recent = await d
+    .prepare(
+      "SELECT COUNT(*) c FROM assistant_messages WHERE org_id=? AND role='user' AND channel='chat' AND created_at > datetime('now','-60 seconds')",
+    )
+    .bind(await currentOrgId())
+    .first();
+  if (Number(recent?.c ?? 0) >= COMMAND_RATE_MAX) {
+    throw new Error("ZEUS is handling a burst of commands — wait a few seconds and try again.");
+  }
 }
 
 // ---- Tool registry: every tool ZEUS can call ----
@@ -131,18 +158,17 @@ async function runTool(name: string, args: Record<string, unknown>, org: string)
 // ---- The ZEUS agent: tool-calling loop ----
 export async function askZeus(message: string) {
   const org = await currentOrgId();
-  const d = db();
 
-  // Rate limit: cap commands per org to blunt credit/row abuse via the LLM loop
-  const recent = await d
-    .prepare(
-      "SELECT COUNT(*) c FROM assistant_messages WHERE org_id=? AND role='user' AND channel='chat' AND created_at > datetime('now','-60 seconds')",
-    )
-    .bind(org)
-    .first();
-  if (Number(recent?.c ?? 0) >= 15) {
-    throw new Error("ZEUS is handling a burst of commands — wait a few seconds and try again.");
+  if (DEV_MOCK) {
+    const mockId = crypto.randomUUID();
+    mockStore.messages.push({ id: mockId, role: "user", text: message, created_at: new Date().toISOString() });
+    const answer = mockAskZeus(message);
+    mockStore.messages.push({ id: crypto.randomUUID(), role: "assistant", text: answer, created_at: new Date().toISOString() });
+    return { answer, messageId: mockId };
   }
+
+  const d = db();
+  await assertNotRateLimited();
 
   // Persist user message
   const userId = crypto.randomUUID();
@@ -207,6 +233,7 @@ export interface DashboardSnapshot {
 }
 
 export async function getDashboard(): Promise<DashboardSnapshot> {
+  if (DEV_MOCK) return mockDashboard();
   const org = await currentOrgId();
   const d = db();
   const [deals, tasks, contacts, inv, notes, msgs] = await Promise.all([
@@ -233,6 +260,7 @@ export async function getDashboard(): Promise<DashboardSnapshot> {
 
 // ---- Simple CRUD for the HUD (kept for the create forms) ----
 export async function createContact(data: { name: string; email?: string; phone?: string; type?: string }) {
+  if (DEV_MOCK) return mockCreateContact(data);
   const org = await currentOrgId();
   const id = crypto.randomUUID();
   await db().prepare("INSERT INTO contacts (id, org_id, type, name, email, phone) VALUES (?,?,?,?,?,?)")
@@ -241,6 +269,7 @@ export async function createContact(data: { name: string; email?: string; phone?
 }
 
 export async function createTask(data: { title: string; priority?: string; due_at?: string }) {
+  if (DEV_MOCK) return mockCreateTask(data);
   const org = await currentOrgId();
   const id = crypto.randomUUID();
   await db().prepare("INSERT INTO tasks (id, org_id, title, priority, due_at) VALUES (?,?,?,?,?)")
@@ -249,6 +278,7 @@ export async function createTask(data: { title: string; priority?: string; due_a
 }
 
 export async function createDeal(data: { title: string; amount?: number; stage?: string }) {
+  if (DEV_MOCK) return mockCreateDeal(data);
   const org = await currentOrgId();
   const id = crypto.randomUUID();
   await db().prepare("INSERT INTO deals (id, org_id, title, amount, stage) VALUES (?,?,?,?,?)")
@@ -257,6 +287,7 @@ export async function createDeal(data: { title: string; amount?: number; stage?:
 }
 
 export async function createNote(data: { title?: string; body: string }) {
+  if (DEV_MOCK) return mockCreateNote(data);
   const org = await currentOrgId();
   const id = crypto.randomUUID();
   await db().prepare("INSERT INTO notes (id, org_id, title, body) VALUES (?,?,?,?)")

@@ -8,6 +8,7 @@ import {
   createNote,
   askZeus,
 } from "./command-center.server";
+import { transcribeVoice } from "./voice.server";
 
 export interface DashboardSnapshot {
   dealCount: number;
@@ -43,3 +44,8 @@ export const createNoteFn = createServerFn({ method: "POST" })
 export const askZeusFn = createServerFn({ method: "POST" })
   .validator(z.object({ message: z.string().min(1).max(2000) }))
   .handler(({ data }) => askZeus(data.message));
+
+// Firefox/Safari voice: audio base64 (MediaRecorder capture) → server STT.
+export const transcribeVoiceFn = createServerFn({ method: "POST" })
+  .validator(z.object({ audio: z.string().min(32).max(8_000_000), mimeType: z.string().min(1).max(64) }))
+  .handler(({ data }) => transcribeVoice(data.audio, data.mimeType));

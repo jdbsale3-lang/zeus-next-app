@@ -15,6 +15,12 @@ import { fileURLToPath } from "node:url";
 // shim instead (see src/lib/quanta-icons.ts). tsconfig.json has
 // the matching `paths` entry so type-checking resolves it too.
 const QUANTA_ICONS_SHIM = fileURLToPath(new URL("./src/lib/quanta-icons.ts", import.meta.url));
+// Dev-only shim for the workerd built-in `cloudflare:workers` (the real module
+// exists only on the deployed Worker runtime). `vite dev` SSR runs in Node and
+// cannot resolve it, which previously crashed every server function locally.
+// Sandbox/mock code never touches bindings, so the shim only needs to fail
+// loudly if a non-mocked path actually tries.
+const CF_ENV_SHIM = fileURLToPath(new URL("./src/lib/dev-cf-env-shim.ts", import.meta.url));
 
 export default defineConfig(({ command, mode }) => {
   const designInspectorEnabled = process.env.HF_DESIGN_INSPECTOR === "1" || mode === "design";
@@ -27,7 +33,11 @@ export default defineConfig(({ command, mode }) => {
     },
     resolve: {
       tsconfigPaths: true,
-      alias: [{ find: /^@higgsfield-ai\/icons(\/.*)?$/, replacement: QUANTA_ICONS_SHIM }],
+      alias: [
+        { find: /^@higgsfield-ai\/icons(\/.*)?$/, replacement: QUANTA_ICONS_SHIM },
+        // Dev only: the deployed runtime provides `cloudflare:workers`.
+        ...(command !== "build" ? [{ find: /^cloudflare:workers$/, replacement: CF_ENV_SHIM }] : []),
+      ],
     },
     // D1 handlers import this workerd built-in through the server-function
     // graph. Mark it external during Vite's browser dependency scan as well.

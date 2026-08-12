@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@higgsfield/quanta/button";
 import { Input } from "@higgsfield/quanta/input";
@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { appFaviconUrl, appMeta } from "@/lib/app-meta";
 import { askZeusFn, createContactFn, createDealFn, createNoteFn, createTaskFn, getDashboardFn } from "@/lib/command-center.functions";
 import type { DashboardSnapshot } from "@/lib/command-center.functions";
-import { isVoiceSupported, speak, startListening, stopListening } from "@/lib/voice";
+import { hasNativeSpeech, hasVoiceInput, speak, startListening, stopListening } from "@/lib/voice";
 
 const MODULES = [
   { name: "Task Matrix", status: "online", icon: CheckSquare },
@@ -78,7 +78,20 @@ export function CommandCenterLayout() {
   const [listening, setListening] = useState(false);
   const [interim, setInterim] = useState("");
   const [voiceOn, setVoiceOn] = useState(true);
-  const voiceSupported = useMemo(() => isVoiceSupported(), []);
+  const voiceOnRef = useRef(true);
+  useEffect(() => {
+    voiceOnRef.current = voiceOn;
+  }, [voiceOn]);
+  // Voice capability is browser-only, so SSR and the first client render agree
+  // (both "unavailable"), then we detect on mount. This avoids an
+  // SSR/client hydration mismatch on devices whose API differs from Node.
+  const [voiceAvailable, setVoiceAvailable] = useState(false);
+  const [nativeSpeech, setNativeSpeech] = useState(false);
+  useEffect(() => {
+    setVoiceAvailable(hasVoiceInput());
+    setNativeSpeech(hasNativeSpeech());
+  }, []);
+  const devMock = Boolean(import.meta.env.DEV && import.meta.env.VITE_ZEUS_MOCK === "1");
 
   const { data: snapshot, isLoading } = useQuery({
     queryKey: ["zeus-dashboard"],
@@ -99,7 +112,7 @@ export function CommandCenterLayout() {
       // Ignore stale results if the user sent a newer run or cancelled
       if (runRef.current !== myRun || cancelledRef.current) return;
       setChat((c) => [...c, { role: "assistant", text: res.answer }]);
-      if (voiceOn) speak(res.answer, true);
+      if (voiceOnRef.current) speak(res.answer, true);
     } catch (e) {
       if (runRef.current !== myRun || cancelledRef.current) return;
       setError((e as Error)?.message ?? "Request failed");
@@ -117,8 +130,8 @@ export function CommandCenterLayout() {
   };
 
   const toggleVoiceInput = () => {
-    if (!voiceSupported) {
-      setError("Voice input needs Chrome or Edge — use the text box for now.");
+    if (!voiceAvailable) {
+      setError("Voice input isn't supported in this browser — use the text box.");
       return;
     }
     if (busy || listening) {
@@ -156,6 +169,11 @@ export function CommandCenterLayout() {
           <div className="flex items-center gap-3">
             {appFaviconUrl ? <img src={appFaviconUrl} alt="" className="h-6 w-6 rounded" /> : null}
             <span className="text-xs text-emerald-400">SYS_95.7%</span>
+            {devMock && (
+              <span className="rounded-full border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 text-[9px] font-bold tracking-widest text-amber-300">
+                DEV SANDBOX
+              </span>
+            )}
           </div>
           <h1 className="text-sm font-bold tracking-widest text-cyan-300">ZEUS AI COMMAND CENTER</h1>
           <span className="text-xs text-cyan-400">NET_88.2%</span>
@@ -237,21 +255,23 @@ export function CommandCenterLayout() {
                 )}
                 {error && !busy && (
                   <div className="flex items-center justify-between gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2 py-1.5 text-[11px] text-rose-300">
-                    <span>That run failed.</span>
+                    <span>{error}</span>
                     <button type="button" onClick={() => setError(null)} className="rounded border border-rose-500/40 px-2 py-0.5 text-[10px] hover:bg-rose-500/20">Dismiss</button>
                   </div>
                 )}
                 {listening && (
                   <div className="flex items-center gap-2 rounded-lg border border-rose-400/40 bg-rose-500/10 px-2 py-1.5 text-[11px] text-rose-200">
                     <span className="h-2 w-2 animate-pulse rounded-full bg-rose-400" />
-                    <span>{interim || "Listening… speak your command"}</span>
+                    <span>{interim || (nativeSpeech ? "Listening… speak your command" : "Recording… tap the mic again when done")}</span>
                   </div>
                 )}
               </div>
               <div className="flex items-end gap-2">
                 <Textarea label="Command ZEUS" value={prompt} onChange={(e) => setPrompt(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(); } }} rows={1} />
-                {voiceSupported && (
-                  <Button variant={listening ? "marketingPrimary" : "tertiary"} size="md" onClick={toggleVoiceInput} aria-label={listening ? "Stop listening" : "Speak your command"}>
+                {voiceAvailable && (
+                  <Button variant={listening ? "marketingPrimary" : "tertiary"} size="md" onClick={toggleVoiceInput}
+                    aria-label={listening ? "Stop listening" : "Speak your command"}
+                    title={nativeSpeech ? "Speak your command" : "Record your command"}>
                     <Icon as={Mic} size="sm" className={listening ? "animate-pulse" : ""} />
                   </Button>
                 )}
@@ -287,7 +307,13 @@ export function CommandCenterLayout() {
         <div className="mt-8 flex flex-col items-center gap-2">
           <ZeusSphere listening={listening} onClick={toggleVoiceInput} />
           <p className="text-[10px] text-slate-500">
-            {listening ? "● LISTENING — SPEAK YOUR COMMAND ●" : voiceSupported ? "▲ TAP THE SPHERE AND TALK TO ZEUS ▲" : "Voice input needs Chrome or Edge — use the chat box"}
+            {listening
+              ? "● LISTENING — SPEAK YOUR COMMAND ●"
+              : voiceAvailable
+                ? nativeSpeech
+                  ? "▲ TAP THE SPHERE AND TALK TO ZEUS ▲"
+                  : "▲ TAP THE SPHERE AND RECORD — VOICE VIA RECORDING ▲"
+                : "Voice input isn't supported in this browser — use the chat box"}
           </p>
         </div>
 

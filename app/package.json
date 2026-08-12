@@ -15,6 +15,7 @@
     "postinstall": "node scripts/verify-install.mjs",
     "check:adapted": "node scripts/check-adaptation.mjs",
     "test": "bun test tests/*.test.ts",
+    "test:e2e": "playwright test",
     "lint": "eslint .",
     "format": "prettier --write .",
     "typecheck": "tsr generate && tsc --noEmit"
@@ -41,6 +42,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260708.1",
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.62.1",
     "@tanstack/router-cli": "^1.167.18",
     "@types/node": "^26.1.0",
     "@types/react": "^19.2.15",
