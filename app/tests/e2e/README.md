@@ -1,5 +1,11 @@
 # ZEUS voice — sandbox testing & E2E suite
 
+[![Voice E2E — Chromium · Firefox · WebKit](https://github.com/<owner>/<repo>/actions/workflows/voice-e2e.yml/badge.svg)](https://github.com/<owner>/<repo>/actions/workflows/voice-e2e.yml)
+<!-- After mirroring the repo to GitHub (see GITHUB-MIRROR.md) and the first
+     green CI run, replace <owner>/<repo> in the badge URL with the real
+     GitHub owner and repository name. Until then the badge renders "no
+     status" — expected. -->
+
 This documents how to run the ZEUS Command Center locally in a **dev sandbox**
 (no platform auth, D1, or LLM required) and how to run the automated voice E2E
 suite. It covers the pieces added for sandbox testing:
@@ -99,7 +105,14 @@ image (all browsers + system deps preinstalled — including WebKit's WPE
 automation stack). It runs one matrix leg per engine
 (`--project=<engine>`), keeps legs from blocking each other (`fail-fast:
 false`), and uploads failure traces as artifacts. The workflow activates
-wherever this repo runs GitHub Actions.
+wherever this repo runs GitHub Actions — see **GITHUB-MIRROR.md** for the
+one-time mirror + badge activation steps. To pre-flight WebKit locally
+(including inside the CI image), run:
+
+```bash
+bun run test:e2e:webkit:verify          # exit 0 = WebKit usable, 2 = env limitation
+ZEUS_E2E_URL=http://127.0.0.1:3001 bun run test:e2e:webkit:verify   # + app header smoke
+```
 
 ### 3c. WebKit in THIS sandbox (known limitation)
 

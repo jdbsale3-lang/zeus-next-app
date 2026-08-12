@@ -16,6 +16,7 @@
     "check:adapted": "node scripts/check-adaptation.mjs",
     "test": "bun test tests/*.test.ts",
     "test:e2e": "playwright test",
+    "test:e2e:webkit:verify": "node tests/e2e/verify-webkit.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
     "typecheck": "tsr generate && tsc --noEmit"
