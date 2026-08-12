@@ -28,6 +28,11 @@ jobs:
       run:
         working-directory: app
     timeout-minutes: 30
+    # Firefox refuses to launch as root when $HOME belongs to another user
+    # (container jobs get HOME=/github/home owned by pwuser). Playwright's
+    # documented fix: point HOME at /root.
+    env:
+      HOME: /root
     steps:
       - uses: actions/checkout@v4
 
