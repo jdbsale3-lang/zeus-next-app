@@ -35,7 +35,7 @@ export type ProjectRow = {
 export type ConnectionRow = {
   id: string;
   provider: string;
-  accountLabel: string | null;
+  account_label: string | null;
   status: string;
   url: string | null;
 };
