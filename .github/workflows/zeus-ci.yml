@@ -1,0 +1,84 @@
+# ZEUS AI - CI pipeline v2.1 (GitHub Actions)
+# Triggers: push/PR on zeus.html | nightly 02:30 UTC | manual dispatch (deploy/rollback)
+# Verify is ADAPTIVE: checks zeus.html in the repo, else verifies the live site.
+name: zeus-ci
+on:
+  push:
+    paths: ["zeus.html", "**/zeus*.html", ".github/workflows/zeus-ci.yml"]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 2 * * *'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify build (repo artifact, fallback live site)
+        run: |
+          chmod +x ops/zeus-verify.sh
+          if [ -f zeus.html ]; then
+            ./ops/zeus-verify.sh zeus.html
+          else
+            echo "no local zeus.html - verifying live standard instead"
+            ./ops/zeus-verify.sh https://zeusaiintelligence.com
+          fi
+      - name: Marker gate (live site)
+        run: |
+          curl -sf https://zeusaiintelligence.com | grep -q zeusPaymentCheck && echo "SITE PAYMENT MARKER OK"
+          curl -sf https://zeusaiintelligence.com | grep -q "AEGIS BUILT-IN" && echo "SITE AEGIS MARKER OK"
+
+  nightly-verify:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Live estate check (nightly)
+        run: |
+          chmod +x ops/zeus-verify.sh
+          ./ops/zeus-verify.sh https://zeusaiintelligence.com
+      - name: Droplet + site health
+        run: |
+          curl -sf https://apiaegissecurity.tech/health >/dev/null && echo "DROPLET OK"
+          curl -sf https://zeusaiintelligence.com >/dev/null && echo "SITE OK"
+
+  deploy-droplet:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    environment: droplet
+    steps:
+      - uses: actions/checkout@v4
+      - name: Backup + ship + health check
+        env:
+          HOST: ${{ secrets.DROPLET_HOST }}
+          USER: ${{ secrets.DROPLET_USER }}
+          KEY: ${{ secrets.DROPLET_SSH_KEY }}
+        run: |
+          echo "$KEY" > /tmp/id && chmod 600 /tmp/id
+          scp -i /tmp/id -o StrictHostKeyChecking=no zeus.html $USER@$HOST:/root/zeus.new.html
+          ssh -i /tmp/id -o StrictHostKeyChecking=no $USER@$HOST \
+            "cp /var/www/zeus/zeus.html /var/www/zeus/zeus.previous.html 2>/dev/null; \
+             mv /root/zeus.new.html /var/www/zeus/zeus.html && \
+             curl -sf https://apiaegissecurity.tech/health && echo DEPLOY-OK"
+
+  rollback-droplet:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    environment: droplet
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore previous + health check
+        env:
+          HOST: ${{ secrets.DROPLET_HOST }}
+          USER: ${{ secrets.DROPLET_USER }}
+          KEY: ${{ secrets.DROPLET_SSH_KEY }}
+        run: |
+          echo "$KEY" > /tmp/id && chmod 600 /tmp/id
+          ssh -i /tmp/id -o StrictHostKeyChecking=no $USER@$HOST \
+            "if [ -f /var/www/zeus/zeus.previous.html ]; then \
+               cp /var/www/zeus/zeus.previous.html /var/www/zeus/zeus.html && \
+               curl -sf https://apiaegissecurity.tech/health && echo ROLLBACK-OK; \
+             else echo NO-PREVIOUS-BUILD; exit 1; fi"
+# Secrets: DROPLET_HOST / DROPLET_USER / DROPLET_SSH_KEY. Repo verified live: jdbsale3-lang/zeus-next-app
