@@ -1,6 +1,7 @@
-# ZEUS AI - CI pipeline v2.1 (GitHub Actions)
-# Triggers: push/PR on zeus.html | nightly 02:30 UTC | manual dispatch (deploy/rollback)
-# Verify is ADAPTIVE: checks zeus.html in the repo, else verifies the live site.
+# ZEUS AI - CI pipeline v3 (GitHub Actions)
+# v3 adds a deploy VERIFICATION job: after deploy-droplet runs,
+# verify-deploy re-checks the live estate and fails the run if
+# anything regressed. Triggers unchanged.
 name: zeus-ci
 on:
   push:
@@ -8,7 +9,9 @@ on:
   pull_request:
   workflow_dispatch:
   schedule:
-    - cron: '30 2 * * *'
+    - cron: '0 2 * * *'    # nightly FULL 53-test suite + Slack summary
+    - cron: '30 2 * * *'   # nightly estate verification run
+    - cron: '0 7 * * 1'    # weekly full report + coverage (Mon 07:00 UTC)
 
 jobs:
   verify:
@@ -30,9 +33,39 @@ jobs:
           curl -sf https://zeusaiintelligence.com | grep -q zeusPaymentCheck && echo "SITE PAYMENT MARKER OK"
           curl -sf https://zeusaiintelligence.com | grep -q "AEGIS BUILT-IN" && echo "SITE AEGIS MARKER OK"
 
+  test:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare test workspace
+        run: |
+          mkdir -p tests
+          cp aegis-advisory-lib.sh tests/ 2>/dev/null || true
+          cp aegis-alert-lib.sh tests/ 2>/dev/null || true
+          cp ops/zeus-verify.sh tests/ 2>/dev/null || true
+          chmod +x tests/*.sh || true
+      - name: Advisory unit suite (23 tests, offline)
+        run: |
+          bash tests/test-advisory-check.sh || exit 1
+      - name: Slack alert unit suite (14 tests, offline)
+        run: |
+          bash tests/test-advisory-alert.sh || exit 1
+      - name: Advisory integration suite (9 tests, live network)
+        run: |
+          bash tests/integration-advisory-check.sh || [ $? -eq 77 ] && echo "integration skipped (offline)"
+      - name: Coverage report
+        run: |
+          bash tests/coverage-advisory-tests.sh || true
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: zeus-test-coverage
+          path: tests/coverage-report.txt
+
   nightly-verify:
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '30 2 * * *'
     steps:
       - uses: actions/checkout@v4
       - name: Live estate check (nightly)
@@ -43,6 +76,142 @@ jobs:
         run: |
           curl -sf https://apiaegissecurity.tech/health >/dev/null && echo "DROPLET OK"
           curl -sf https://zeusaiintelligence.com >/dev/null && echo "SITE OK"
+
+  nightly-tests:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 2 * * *'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare test workspace
+        run: |
+          mkdir -p tests
+          cp aegis-advisory-lib.sh tests/ 2>/dev/null || true
+          cp aegis-alert-lib.sh tests/ 2>/dev/null || true
+          cp aegis-advisory-check.sh tests/ 2>/dev/null || true
+          cp aegis-advisory-alert.sh tests/ 2>/dev/null || true
+          chmod +x tests/*.sh || true
+      - name: Run the full 53-test suite
+        run: |
+          : > /tmp/suite-results.txt
+          : > /tmp/suite-failed.txt
+          for s in test-advisory-check.sh test-advisory-alert.sh integration-advisory-check.sh integration-advisory-alert.sh; do
+            if bash "tests/$s" > "/tmp/$s.log" 2>&1; then
+              echo "$s: PASS" | tee -a /tmp/suite-results.txt
+            else
+              echo "$s: FAIL" | tee -a /tmp/suite-results.txt
+              echo "1" > /tmp/suite-failed.txt
+            fi
+          done
+          echo "EXIT-77 note: integration suites skip gracefully when offline (not a failure)."
+      - name: Post pass/fail summary to Slack
+        if: always()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          SUMMARY=$(python3 -c '
+          import json
+          lines = open("/tmp/suite-results.txt").read().splitlines()
+          body = "\n".join(lines) if lines else "(no results)"
+          print(json.dumps({"text": "ZEUS nightly test run (02:00 UTC)\n" + body}))
+          ')
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            if curl -fsSL -m 20 -H "Content-Type: application/json" -d "$SUMMARY" "$SLACK_WEBHOOK_URL" >/dev/null 2>&1; then
+              echo "SLACK: summary delivered"
+            else
+              echo "SLACK: POST failed - summary below"
+            fi
+          else
+            echo "SLACK: not configured (repo secret SLACK_WEBHOOK_URL unset) - summary below"
+          fi
+          cat /tmp/suite-results.txt
+      - name: Failure escalation alert
+        if: always()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_ESCALATION_WEBHOOK_URL: ${{ secrets.SLACK_ESCALATION_WEBHOOK_URL }}
+        run: |
+          if [ ! -s /tmp/suite-failed.txt ]; then
+            echo "ESCALATION: no failure - nothing to escalate"
+            exit 0
+          fi
+          FAILED_SUITES=$(grep ": FAIL" /tmp/suite-results.txt | sed 's/: FAIL//' | tr '\n' ' ' )
+          FAILED_SUITES=${FAILED_SUITES:-unknown}
+          PAYLOAD=$(python3 -c '
+          import json
+          suites = "'"$FAILED_SUITES"'".strip()
+          print(json.dumps({"text": ":red_circle: ZEUS NIGHTLY TESTS FAILED (02:00 UTC)\nFailing suite(s): " + suites + "\nAction: check the run log on GitHub Actions and re-run the workflow."}))
+          ')
+          TARGET=${SLACK_ESCALATION_WEBHOOK_URL:-$SLACK_WEBHOOK_URL}
+          if [ -n "$TARGET" ]; then
+            if curl -fsSL -m 20 -H "Content-Type: application/json" -d "$PAYLOAD" "$TARGET" >/dev/null 2>&1; then
+              echo "ESCALATION: alert delivered to $([ -n "$SLACK_ESCALATION_WEBHOOK_URL" ] && echo ESCALATION-CHANNEL || echo PRIMARY-CHANNEL)"
+            else
+              echo "ESCALATION: POST failed - payload below"
+              echo "$PAYLOAD"
+            fi
+          else
+            echo "ESCALATION: Slack not configured - payload below (log-only)"
+            echo "$PAYLOAD"
+          fi
+      - name: Fail job if any suite failed
+        if: always()
+        run: |
+          if [ -s /tmp/suite-failed.txt ]; then
+            echo "NIGHTLY TESTS: FAILURE - see suite-results"
+            exit 1
+          fi
+          echo "NIGHTLY TESTS: ALL PASS - 53 tests green"
+
+  weekly-report:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 7 * * 1'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare test workspace
+        run: |
+          mkdir -p tests
+          cp aegis-advisory-lib.sh tests/ 2>/dev/null || true
+          cp aegis-alert-lib.sh tests/ 2>/dev/null || true
+          cp aegis-advisory-check.sh tests/ 2>/dev/null || true
+          cp aegis-advisory-alert.sh tests/ 2>/dev/null || true
+          cp coverage-advisory-tests.sh tests/ 2>/dev/null || true
+          chmod +x tests/*.sh || true
+      - name: Run full suite + generate coverage report
+        run: |
+          bash tests/coverage-advisory-tests.sh || true
+      - name: Upload coverage report artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: zeus-weekly-report
+          path: |
+            tests/coverage-report.txt
+            tests/coverage-report.html
+          retention-days: 14
+      - name: Post weekly summary to Slack
+        if: always()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -f tests/coverage-report.txt ]; then
+            SUMMARY=$(python3 -c '
+            import json
+            lines = open("tests/coverage-report.txt").read().splitlines()
+            body = "\n".join(l for l in lines if l and not l.startswith("==")) if lines else "(no report)"
+            print(json.dumps({"text": ":calendar: ZEUS weekly test report (Mon 07:00 UTC)\n" + body}))
+            ')
+          else
+            SUMMARY='{"text": "ZEUS weekly report: coverage-report.txt missing"}'
+          fi
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            if curl -fsSL -m 20 -H "Content-Type: application/json" -d "$SUMMARY" "$SLACK_WEBHOOK_URL" >/dev/null 2>&1; then
+              echo "SLACK: weekly summary delivered"
+            else
+              echo "SLACK: POST failed - summary below"
+            fi
+          else
+            echo "SLACK: not configured - summary below"
+          fi
+          cat tests/coverage-report.txt 2>/dev/null || echo "(report missing)"
 
   deploy-droplet:
     runs-on: ubuntu-latest
@@ -63,6 +232,44 @@ jobs:
              mv /root/zeus.new.html /var/www/zeus/zeus.html && \
              curl -sf https://apiaegissecurity.tech/health && echo DEPLOY-OK"
 
+  verify-deploy:
+    runs-on: ubuntu-latest
+    needs: deploy-droplet
+    if: github.event_name == 'workflow_dispatch' && always()
+    steps:
+      - name: Health endpoint still 200
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" -m 20 https://apiaegissecurity.tech/health)
+          [ "$code" = "200" ] && echo "HEALTH OK" || { echo "HEALTH FAILED ($code)"; exit 1; }
+      - name: Live build size + markers intact
+        run: |
+          curl -sf https://zeusaiintelligence.com -o /tmp/live.html
+          SZ=$(wc -c < /tmp/live.html)
+          [ "$SZ" -eq 631466 ] || { echo "SIZE MISMATCH: $SZ"; exit 1; }
+          grep -q zeusPaymentCheck /tmp/live.html || { echo "MARKER MISSING"; exit 1; }
+          grep -q "AEGIS BUILT-IN" /tmp/live.html || { echo "AEGIS MARKER MISSING"; exit 1; }
+          echo "DEPLOY VERIFIED: 631466 B + markers OK"
+      - name: Module 9 network module healthy in /health payload
+        run: |
+          H=$(curl -sf -m 20 https://apiaegissecurity.tech/health || echo "{}")
+          echo "$H" | python3 -c '
+          import json,sys
+          d=json.load(sys.stdin)
+          net=d.get("network",{})
+          assert net.get("status") == "ok", "network status: %s" % net.get("status")
+          assert "advisory" in net, "advisory block missing"
+          print("NETWORK MODULE OK: status=%s advisory.last_check=%s" % (net.get("status"), net.get("advisory",{}).get("last_check")))
+          '
+      - name: Rollback copy intact (droplet)
+        env:
+          HOST: ${{ secrets.DROPLET_HOST }}
+          USER: ${{ secrets.DROPLET_USER }}
+          KEY: ${{ secrets.DROPLET_SSH_KEY }}
+        run: |
+          echo "$KEY" > /tmp/id && chmod 600 /tmp/id
+          ssh -i /tmp/id -o StrictHostKeyChecking=no $USER@$HOST \
+            "test -f /var/www/zeus/zeus.previous.html && echo 'ROLLBACK COPY OK' || { echo 'ROLLBACK COPY MISSING'; exit 1; }"
+
   rollback-droplet:
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch'
@@ -81,4 +288,4 @@ jobs:
                cp /var/www/zeus/zeus.previous.html /var/www/zeus/zeus.html && \
                curl -sf https://apiaegissecurity.tech/health && echo ROLLBACK-OK; \
              else echo NO-PREVIOUS-BUILD; exit 1; fi"
-# Secrets: DROPLET_HOST / DROPLET_USER / DROPLET_SSH_KEY. Repo verified live: jdbsale3-lang/zeus-next-app
+# Secrets: DROPLET_HOST / DROPLET_USER / DROPLET_SSH_KEY

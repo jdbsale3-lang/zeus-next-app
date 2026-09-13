@@ -1,0 +1,59 @@
+ZEUS AI - KNOWLEDGE PACK v1 (12 Sep 2026)
+Store this in ZEUS with the learning engine (say each line, or paste into the
+learn panel). Confirms this turn's work is wired into the app.
+
+teach zeus zeus-verify.sh means Linux and macOS build verifier - checks size gate 600000, six markers, sha256 sealed standard, exit 0 PASS
+teach zeus zeus-verify.bat means Windows build verifier - certutil sha256 compare, root sync check, five checks
+teach zeus deploy test plan means six gate release checklist - A baseline B deploy C local verify D live verify E rollback drill F signoff
+teach zeus ci pipeline means github actions zeus-ci runs verify on every push and optional manual deploy to droplet
+teach zeus rollback script means restores zeus.previous.html over zeus.html and index.html with verification
+teach zeus ops package means the zeus-ops-package zip holding install fix, deploy fixed, rollback, import tasks, verify, manifest, runbook, test plan
+teach zeus sealed standard means build efe20acd size 631466 bytes sha256 1e3496aa1a4b0364da7f225158265491dbbcfeb539746e6ed15e7f64c0982f41
+note: all of the above also logged in the SHA256 manifest + ops runbook.
+
+teach zeus gitlab ci means gitlab pipeline verifying build on push with manual droplet deploy job
+teach zeus windows verify powershell means zeus-verify.ps1 checks size markers root sync sha256 rollback copy exit 0 pass
+
+teach zeus nightly ci run means github actions zeus-ci checks live estate and droplet health at 02:30 utc daily
+teach zeus rollback ci job means manual github action restoring zeus.previous.html to droplet with health check
+teach zeus ci runbook means setup steps repo clone secrets nightly manual dispatch and local verify commands
+
+teach zeus github repo means jdbsale3-lang zeus-next-app is the live verified repo - old zeus and zeus-os urls are 404 dead
+teach zeus github folder means the repo lives at userprofile source repos zeus-next-app not system32
+
+teach zeus wireshark link means the share google link goes to wireshark download page stable 4.6.8
+teach zeus aegis network module means tshark based droplet capture with 5 minute rotating timer and health hook net-ok
+teach zeus aegis module nine means deep packet telemetry on droplet via aegis-tshark-setup.sh
+
+teach zeus module nine deploy means aegis-mod9-deploy.sh runs on the droplet installing tshark captures weekly advisory check and status producer
+teach zeus advisory check means weekly monday 06 00 utc wireshark security page diff baseline report new advisories
+teach zeus net health hook means status json every 5 min feeding aegis health endpoint with status ok stale or no captures
+
+teach zeus advisory alert means aegis-advisory-alert.sh writes dated alert file on new advisories and can post to your own webhook only if set
+teach zeus module nine verify means aegis-mod9-verify.sh checks tshark timers status json captures baseline and health endpoint exit 0 all pass
+teach zeus health advisory details means status json includes advisory last check tracked count and new count via healthhook v2
+
+teach zeus advisory severity means wireshark advisory pages carry cve ids and mitre api gives cvss score severity filter rank critical high moderate low
+teach zeus ci verify deploy means zeus-ci v3 has verify-deploy job after deploy checking health size markers and rollback copy
+teach zeus slack alert means aegis-advisory-alert v2 posts to slack incoming webhook only if slack webhook url set otherwise local alert file
+
+teach zeus advisory unit tests means test-advisory-check.sh runs 23 offline tests against aegis-advisory-lib.sh shared logic
+teach zeus advisory lib means aegis-advisory-lib.sh holds pure functions severity bucket rank filter id extraction baseline diff used by check and tests
+teach zeus alert dry run means aegis-advisory-alert --dry-run prints masked url and payload sends nothing
+teach zeus health deploy verification means aegis-health-deploy-verification.md documents health contract status semantics and ci mapping
+
+teach zeus integration test means integration-advisory-check.sh runs real check script live against wireshark and mitre in sandbox base
+teach zeus alert lib means aegis-alert-lib.sh holds pure functions count parsing payload builder url masking used by alert and tests
+teach zeus alert unit tests means test-advisory-alert.sh runs 14 offline tests against lib and script behavior with sandbox base dry run
+teach zeus ci v4 means zeus-ci-v4 yml verify-deploy also asserts module nine network ok and advisory block in health payload
+
+teach zeus ci test job means zeus-ci v5 has test job running advisory unit alert unit and integration suites plus coverage report artifact
+teach zeus coverage report means coverage-advisory-tests.sh runs suites and reports function level coverage of the 8 lib functions
+teach zeus slack integration test means integration-advisory-alert.sh posts to local mock http server real alert script end to end 7 tests
+
+teach zeus nightly test job means zeus-ci v6 cron 0 2 daily runs full 53 test suite and posts pass fail summary to slack via repo secret
+teach zeus ci schedule guard means nightly jobs gate on github event schedule so 02 00 tests and 02 30 estate check never double fire
+
+teach zeus failure escalation means nightly test failure posts red circle alert to slack escalation channel or primary if escalation webhook unset
+teach zeus weekly report job means monday 07 00 utc full suite coverage report uploaded as artifacts and slack summary with coverage
+teach zeus ci v7 means three crons 02 00 tests 02 30 estate 07 00 monday weekly report with escalation step
