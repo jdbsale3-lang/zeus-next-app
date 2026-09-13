@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       target:
-        description: 'Job to run: all | weekly-report | nightly-tests | nightly-verify | deploy | rollback'
+        description: 'Job to run: all | weekly-report | nightly-tests | nightly-verify | deploy | rollback | d1'
         required: false
         default: 'all'
   schedule:
@@ -229,6 +229,30 @@ jobs:
             echo "SLACK: not configured - summary below"
           fi
           cat tests/coverage-report.txt 2>/dev/null || echo "(report missing)"
+
+  deploy-d1:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'd1'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply D1 migrations (0011 then 0010)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 execute zeus-db --file=app/migrations/0011_aegis_fix.sql --remote
+      - name: Apply 0010
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 execute zeus-db --file=app/migrations/0010_governance.sql --remote
+      - name: Verify policy rows + guards
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 execute zeus-db --command "SELECT id, rule FROM policy_rules LIMIT 5" --remote
 
   deploy-droplet:
     runs-on: ubuntu-latest
