@@ -1,0 +1,7 @@
+-- 0070: ZEUS polyglot upgrade — the full Exercism track roster stored in the
+-- Second Brain so the Commander can answer language questions and generate
+-- exercises in any of the 83 mastered languages.
+INSERT OR IGNORE INTO memory (id, org_id, kind, key, body, source, created_at) VALUES
+('mem_polyglot_roster', 'org_user_3GJd975B4Ec780O9XOw', 'fact', 'polyglot_roster',
+'ZEUS has a mastered polyglot roster of 83 language tracks recorded from exercism.org/tracks and stored in the detail doc app/docs/polyglot-mastery.md and the lookup module app/src/lib/polyglot.server.ts. The roster: 8th abap arm64-assembly arturo awk ballerina bash batch c cairo cfml clojure cobol coffeescript common-lisp cpp crystal csharp d dart delphi elixir elm emacs-lisp erlang euphoria factor fortran free-pascal fsharp futhark gleam go groovy haskell idris java javascript jq julia kotlin lean lfe lua mips moonscript nim objective-c ocaml odin perl5 pharo-smalltalk php powershell prolog purescript pyret python r racket raku reasonml red roc ruby rust scala scheme sml sqlite swift tcl typescript uiua unison vbnet vimscript vlang wasm wren x86-64-assembly yamlscript zig. Query exercise prompts, run commands, and syntax idioms from the lookup module.',
+'zeus', datetime('now'));
