@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       target:
-        description: 'Job to run: all | weekly-report | nightly-tests | nightly-verify | deploy | rollback | d1'
+        description: 'Job to run: all | weekly-report | nightly-tests | nightly-verify | deploy | rollback'
         required: false
         default: 'all'
   schedule:
@@ -240,19 +240,19 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: d1 execute zeus-db --file=app/migrations/0011_aegis_fix.sql --remote
+          command: d1 execute app-slug-placeholder-db --file=app/migrations/0011_aegis_fix.sql --remote
       - name: Apply 0010
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: d1 execute zeus-db --file=app/migrations/0010_governance.sql --remote
+          command: d1 execute app-slug-placeholder-db --file=app/migrations/0010_governance.sql --remote
       - name: Verify policy rows + guards
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: d1 execute zeus-db --command "SELECT id, rule FROM policy_rules LIMIT 5" --remote
+          command: d1 execute app-slug-placeholder-db --command "SELECT id, rule FROM policy_rules LIMIT 5" --remote
 
   deploy-droplet:
     runs-on: ubuntu-latest

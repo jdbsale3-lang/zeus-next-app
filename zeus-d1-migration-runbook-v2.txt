@@ -1,0 +1,45 @@
+ZEUS D1 MIGRATION RUNBOOK v1 (13 Sep 2026)
+Darren Birch - ZEUSTRUSTAEGISSECURITY LTD
+WHERE: PC PowerShell, repo root C:\Users\jdbsales\source\repos\zeus-next-app
+Prereq: wrangler works -> npx wrangler --version (use npx if global install silent-failed)
+=================================================================
+
+GOAL
+  Apply governance migration 0010 safely, after verifying its three
+  table dependencies (tool_audit, policy_rules, shopify_sync_log)
+  that NO earlier migration creates. 0011 (already on main) provides
+  them + enforced audit immutability.
+
+STEP 1 - AUTH (one time, browser)
+  npx wrangler login
+
+STEP 2 - VERIFY TABLE DEPENDENCIES (the decision point)
+  npx wrangler d1 execute app-slug-placeholder-db --command "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('tool_audit','policy_rules','shopify_sync_log')" --remote
+
+STEP 3 - APPLY (decision from Step 2)
+  Case A: ANY of the three missing:
+    npx wrangler d1 execute app-slug-placeholder-db --file=app/migrations/0011_aegis_fix.sql --remote
+    npx wrangler d1 execute app-slug-placeholder-db --file=app/migrations/0010_governance.sql --remote
+  Case B: all three present:
+    npx wrangler d1 execute app-slug-placeholder-db --file=app/migrations/0010_governance.sql --remote
+  (0011 is idempotent - CREATE TABLE IF NOT EXISTS + triggers IF NOT EXISTS)
+
+STEP 4 - VERIFY APPLY
+  npx wrangler d1 execute app-slug-placeholder-db --command "SELECT id, rule FROM policy_rules LIMIT 5" --remote
+  npx wrangler d1 execute app-slug-placeholder-db --command "SELECT name FROM sqlite_master WHERE type='trigger' AND name LIKE 'guard_audit_%'" --remote
+  Expect: 5 policy rows + guard_audit_no_update + guard_audit_no_delete
+
+STEP 5 - PROVE IMMUTABILITY (optional sanity)
+  npx wrangler d1 execute app-slug-placeholder-db --command "DELETE FROM tool_audit WHERE id=0" --remote
+  Expect: ABORT error "tool_audit is append-only: DELETE blocked"
+
+STEP 6 - ROLLBACK IF NEEDED (D1 has no transactional rollback; re-run 0011
+  with corrected schema is the path, or restore from a D1 backup)
+  npx wrangler d1 export app-slug-placeholder-db --remote --output=app-slug-placeholder-db-backup-$(Get-Date -Format yyyyMMdd).sql
+
+NOTES
+  - 0010's header was fixed to app/migrations/0010_governance.sql (committed cc3212c)
+  - 0011 is a draft from the migration review - review before apply if your
+    schema source (e.g. app schema.ts) defines these tables elsewhere
+=================================================================
+All IP belongs to Darren Birch - ZEUSTRUSTAEGISSECURITY LTD.
