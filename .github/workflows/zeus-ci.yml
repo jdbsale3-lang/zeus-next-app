@@ -8,6 +8,11 @@ on:
     paths: ["zeus.html", "**/zeus*.html", ".github/workflows/zeus-ci.yml"]
   pull_request:
   workflow_dispatch:
+    inputs:
+      target:
+        description: 'Job to run: all | weekly-report | nightly-tests | nightly-verify | deploy | rollback'
+        required: false
+        default: 'all'
   schedule:
     - cron: '0 2 * * *'    # nightly FULL 53-test suite + Slack summary
     - cron: '30 2 * * *'   # nightly estate verification run
@@ -32,19 +37,13 @@ jobs:
         run: |
           EXPECT="1e3496aa1a4b0364da7f225158265491dbbcfeb539746e6ed15e7f64c0982f41"
           if [ -f zeus.html ]; then
-            H=$(sha256sum zeus.html | cut -d' ' -f1)
-            SRC="repo zeus.html"
+            H=$(sha256sum zeus.html | cut -d' ' -f1); SRC="repo zeus.html"
           else
             curl -sf https://zeusaiintelligence.com -o /tmp/live.html
-            H=$(sha256sum /tmp/live.html | cut -d' ' -f1)
-            SRC="live site"
+            H=$(sha256sum /tmp/live.html | cut -d' ' -f1); SRC="live site"
           fi
-          echo "source: $SRC"
-          echo "hash  : $H"
-          if [ "$H" != "$EXPECT" ]; then
-            echo "SHA256 MISMATCH - expected $EXPECT"
-            exit 1
-          fi
+          echo "source: $SRC"; echo "hash  : $H"
+          if [ "$H" != "$EXPECT" ]; then echo "SHA256 MISMATCH - expected $EXPECT"; exit 1; fi
           echo "SHA256 MATCH - sealed standard verified"
       - name: Marker gate (live site)
         run: |
@@ -83,7 +82,7 @@ jobs:
 
   nightly-verify:
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '30 2 * * *'
+    if: (github.event_name == 'schedule' && github.event.schedule == '30 2 * * *') || (github.event_name == 'workflow_dispatch' && (github.event.inputs.target == 'nightly-verify' || github.event.inputs.target == 'all'))
     steps:
       - uses: actions/checkout@v4
       - name: Live estate check (nightly)
@@ -97,7 +96,7 @@ jobs:
 
   nightly-tests:
     runs-on: ubuntu-latest
-    if: github.event.schedule == '0 2 * * *'
+    if: (github.event_name == 'schedule' && github.event.schedule == '0 2 * * *') || (github.event_name == 'workflow_dispatch' && (github.event.inputs.target == 'nightly-tests' || github.event.inputs.target == 'all'))
     steps:
       - uses: actions/checkout@v4
       - name: Prepare test workspace
@@ -182,7 +181,7 @@ jobs:
 
   weekly-report:
     runs-on: ubuntu-latest
-    if: github.event.schedule == '0 7 * * 1'
+    if: (github.event_name == 'schedule' && github.event.schedule == '0 7 * * 1') || (github.event_name == 'workflow_dispatch' && (github.event.inputs.target == 'weekly-report' || github.event.inputs.target == 'all'))
     steps:
       - uses: actions/checkout@v4
       - name: Prepare test workspace
@@ -233,7 +232,7 @@ jobs:
 
   deploy-droplet:
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.target == 'deploy' || github.event.inputs.target == 'all')
     environment: droplet
     steps:
       - uses: actions/checkout@v4
@@ -290,7 +289,7 @@ jobs:
 
   rollback-droplet:
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.target == 'rollback' || github.event.inputs.target == 'all')
     environment: droplet
     steps:
       - uses: actions/checkout@v4

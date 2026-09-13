@@ -1,6 +1,6 @@
 app/migration/-- 0010_governance.sql — ZEUS governance hardening
 -- Adds: full agent audit logging via DB triggers + department policy rules.
--- Apply: wrangler d1 execute zeus-db --file=./migrations/0010_governance.sql --remote
+-- Apply (from repo root): wrangler d1 execute zeus-db --file=app/migrations/0010_governance.sql --remote
 
 -- ============ 1. FULL AGENT AUDIT LOGGING (trigger-based) ============
 -- Every insert/update on business-critical tables is recorded in tool_audit.
