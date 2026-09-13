@@ -28,6 +28,24 @@ jobs:
             echo "no local zeus.html - verifying live standard instead"
             ./ops/zeus-verify.sh https://zeusaiintelligence.com
           fi
+      - name: SHA256 integrity gate (full 64-char, no truncation)
+        run: |
+          EXPECT="1e3496aa1a4b0364da7f225158265491dbbcfeb539746e6ed15e7f64c0982f41"
+          if [ -f zeus.html ]; then
+            H=$(sha256sum zeus.html | cut -d' ' -f1)
+            SRC="repo zeus.html"
+          else
+            curl -sf https://zeusaiintelligence.com -o /tmp/live.html
+            H=$(sha256sum /tmp/live.html | cut -d' ' -f1)
+            SRC="live site"
+          fi
+          echo "source: $SRC"
+          echo "hash  : $H"
+          if [ "$H" != "$EXPECT" ]; then
+            echo "SHA256 MISMATCH - expected $EXPECT"
+            exit 1
+          fi
+          echo "SHA256 MATCH - sealed standard verified"
       - name: Marker gate (live site)
         run: |
           curl -sf https://zeusaiintelligence.com | grep -q zeusPaymentCheck && echo "SITE PAYMENT MARKER OK"
