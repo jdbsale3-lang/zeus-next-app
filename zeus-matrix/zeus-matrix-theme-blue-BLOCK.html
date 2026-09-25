@@ -1,0 +1,113 @@
+<!-- ZEUS - BLUE MATRIX THEME + LIVE RAIN BACKGROUND. Drop-in REPLACEMENT for lines 7589-7619 of zeus.html: <style id="zeusThemes"> through the closing </script> of the zeusSetTheme block. Changes: (1) Matrix theme is BLUE not green - was background #020d00 / text #a9ff9a, now #020b1e / #bfe0ff. (2) Live blue matrix rain runs behind the UI on the Matrix theme. (3) Boot default becomes Matrix when nothing was saved. (4) All other themes unchanged. -->
+<style id="zeusThemes">
+body[data-zeus-theme]{background:#0b0f1e;color:#d7e4ff;transition:all .35s ease}
+body[data-zeus-theme="ember"]{background:#170d08;color:#ffe8d1}
+body[data-zeus-theme="ocean"]{background:#04141f;color:#d8f3ff}
+/* MATRIX - BLUE. Was: background:#020d00; color:#a9ff9a (green) */
+body[data-zeus-theme="matrix"]{background:#020b1e;color:#bfe0ff}
+body[data-zeus-theme="midnight"]{background:#0c0717;color:#e6dcff}
+body[data-zeus-theme="aurora"]{background:#0a0d1c;color:#e9f2ff}
+body[data-zeus-theme] .zh-panel,
+body[data-zeus-theme] [class*="panel"]{background:rgba(10,20,40,.78)!important;border-color:rgba(120,200,255,.25)!important}
+body[data-zeus-theme="matrix"]{background:transparent!important}
+body[data-zeus-theme="matrix"] .zh-panel,
+body[data-zeus-theme="matrix"] [class*="panel"]{background:rgba(6,16,38,.72)!important;border-color:rgba(77,163,255,.35)!important}
+body[data-zeus-theme="matrix"] .zh-btn,
+body[data-zeus-theme="matrix"] button{border-color:rgba(77,163,255,.45)!important}
+body[data-zeus-theme="matrix"] .zh-row b{color:#8fc4ff!important}
+#zeusMatrixBlue{position:fixed;inset:0;width:100vw;height:100vh;z-index:-1;pointer-events:none;display:block}
+</style>
+<script>
+window.zeusThemes={
+  arc:{label:'\u25c8 Arc Reactor'},
+  ember:{label:'\u25c8 Ember'},
+  ocean:{label:'\u25c8 Ocean'},
+  matrix:{label:'\u25c8 Matrix'},
+  midnight:{label:'\u25c8 Midnight'},
+  aurora:{label:'\u25c8 Aurora'}
+};
+window.zeusSetTheme=function(t){
+  t=t||localStorage.getItem('zeusTheme')||'matrix';
+  if(!window.zeusThemes[t]) t='arc';
+  document.body.setAttribute('data-zeus-theme',t);
+  localStorage.setItem('zeusTheme',t);
+  var s=document.getElementById('zeusThemeSel');
+  if(s){for(var i=0;i<s.options.length;i++){if(s.options[i].value===t){s.selectedIndex=i;break;}}}
+  try{if(window.zeusSayLog)zeusSayLog('Theme set to '+window.zeusThemes[t].label);}catch(e){}
+  if(window.zeusMatrixBlue) window.zeusMatrixBlue.sync(t);
+  return t;
+};
+(function(){window.zeusSetTheme(localStorage.getItem('zeusTheme')||'matrix');})();
+</script>
+<script id="zeus-matrix-blue">
+/* ZEUS - live BLUE matrix rain, background layer. Blue only, no green. */
+(function(){
+  'use strict';
+  if(window.zeusMatrixBlue) return;
+  var CFG={ fontPx:15, columnPx:16, trail:0.085, headChance:0.02, fpsCap:30,
+    base:'#020b1e', head:'#bfe0ff', bright:'#4da3ff', dim:'#1e6fff' };
+  var GLYPHS="\uff71\uff72\uff73\uff74\uff75\uff76\uff77\uff78\uff79\uff7a\uff7b\uff7c\uff7d\uff7e\uff7f\uff80\uff81\uff82\uff83\uff84\uff85\uff86\uff87\uff88\uff89\uff8a\uff8b\uff8c\uff8d\uff8e\uff8f\uff90\uff91\uff92\uff93\uff94\uff95\uff96\uff97\uff98\uff99\uff9a\uff9b\uff9c\uff9d"+
+             "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ<>[]{}/*+-=$#@%&";
+  var reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var canvas=document.createElement('canvas');
+  canvas.id='zeusMatrixBlue';
+  canvas.setAttribute('aria-hidden','true');
+  if(document.body) document.body.insertBefore(canvas, document.body.firstChild);
+  else document.documentElement.appendChild(canvas);
+  var ctx=canvas.getContext('2d',{alpha:false});
+  var w=0,h=0,dpr=1,cols=0,drops=[],speeds=[],active=false;
+  var FADE='rgba(2,11,30,'+CFG.trail+')';
+  function resize(){
+    dpr=Math.min(window.devicePixelRatio||1,2);
+    w=window.innerWidth; h=window.innerHeight;
+    canvas.width=Math.floor(w*dpr); canvas.height=Math.floor(h*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.font=CFG.fontPx+"px 'Courier New', ui-monospace, monospace";
+    ctx.textBaseline='top';
+    cols=Math.max(1,Math.floor(w/CFG.columnPx));
+    drops=new Array(cols); speeds=new Array(cols);
+    for(var i=0;i<cols;i++){ drops[i]=Math.random()*-60; speeds[i]=0.45+Math.random()*0.95; }
+    ctx.fillStyle=CFG.base; ctx.fillRect(0,0,w,h);
+  }
+  function glyph(){ return GLYPHS.charAt((Math.random()*GLYPHS.length)|0); }
+  function step(){
+    ctx.fillStyle=FADE; ctx.fillRect(0,0,w,h);
+    ctx.font=CFG.fontPx+"px 'Courier New', ui-monospace, monospace";
+    for(var i=0;i<cols;i++){
+      var x=i*CFG.columnPx, y=drops[i]*CFG.fontPx;
+      if(Math.random()<CFG.headChance){ ctx.fillStyle=CFG.head; ctx.shadowColor=CFG.head; ctx.shadowBlur=8; }
+      else { ctx.fillStyle=Math.random()<0.3?CFG.bright:CFG.dim; ctx.shadowBlur=0; }
+      ctx.fillText(glyph(),x,y);
+      ctx.shadowBlur=0;
+      drops[i]+=speeds[i];
+      if(y>h&&Math.random()>0.975) drops[i]=Math.random()*-30;
+    }
+  }
+  var raf=0,last=0,minGap=1000/CFG.fpsCap;
+  function loop(ts){ if(!active) return; if(ts-last>=minGap){ last=ts; step(); } raf=window.requestAnimationFrame(loop); }
+  function start(){ if(active) return; active=true; last=0; raf=window.requestAnimationFrame(loop); }
+  function stop(){ active=false; if(raf) window.cancelAnimationFrame(raf); raf=0; }
+  resize();
+  function sync(theme){
+    var t=theme||(document.body&&document.body.getAttribute('data-zeus-theme'))||'arc';
+    if(t==='matrix'){
+      canvas.style.display='block';
+      if(reduced){ for(var k=0;k<40;k++) step(); }
+      else if(!document.hidden){ start(); }
+    } else {
+      stop();
+      canvas.style.display='none';
+    }
+  }
+  window.zeusMatrixBlue={ sync:sync, pause:stop, resume:function(){ sync(document.body.getAttribute('data-zeus-theme')); }, config:CFG, canvas:canvas };
+  if(document.body){
+    new MutationObserver(function(){ sync(document.body.getAttribute('data-zeus-theme')); })
+      .observe(document.body,{attributes:true,attributeFilter:['data-zeus-theme']});
+    sync(document.body.getAttribute('data-zeus-theme'));
+  } else {
+    document.addEventListener('DOMContentLoaded',function(){ sync(); });
+  }
+  window.addEventListener('resize',function(){ resize(); if(document.body&&document.body.getAttribute('data-zeus-theme')==='matrix'){ if(reduced) for(var k=0;k<40;k++) step(); } },{passive:true});
+  document.addEventListener('visibilitychange',function(){ if(reduced) return; if(document.hidden) stop(); else sync(document.body&&document.body.getAttribute('data-zeus-theme')); });
+})();
+</script>
