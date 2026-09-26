@@ -1,0 +1,113 @@
+# close-reach-exposure.yml  -  CORRECTED (supersedes the anchor-patch version)
+#
+# SAVE AS: .github/workflows/close-reach-exposure.yml
+# THEN:    GitHub -> Actions -> "Close /reach exposure" -> Run workflow
+#            apply = no   -> dry run: prints the CURRENT and PROPOSED config, changes nothing
+#            apply = yes  -> backs up, installs the allowlist, tests, reloads, verifies BOTH ways
+#
+# WHY NOT AN ANCHOR PATCH: changing the regex anchor `$` -> `/?$` closes /reach/search/
+# but NOT /reach/search;x. The bridge strips the `;` matrix parameter, so the action still
+# executes - verified live: /reach/gh;x -> 200 (real gh invocation), /reach/yt;x -> 200
+# (yt-dlp ran), /reach/search%3bfoo -> 200. An anchor patch moves the fence one character.
+# This installs an ALLOWLIST so anything unlisted fails closed.
+#
+# SAFETY: rolls back on nginx -t failure OR on verification failure, checking BOTH
+# directions - action routes must be 404, dashboard routes must still be 200.
+
+name: Close /reach exposure
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: 'Type yes to install the allowlist. Anything else = dry run.'
+        required: true
+        default: 'no'
+
+jobs:
+  close:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install the /reach allowlist
+        env:
+          HOST: ${{ secrets.DROPLET_HOST }}
+          USER: ${{ secrets.DROPLET_USER }}
+          KEY: ${{ secrets.DROPLET_SSH_KEY }}
+          APPLY: ${{ inputs.apply }}
+        run: |
+          echo "$KEY" > /tmp/id && chmod 600 /tmp/id
+          ssh -i /tmp/id -o StrictHostKeyChecking=no -o ConnectTimeout=20 $USER@$HOST \
+            "APPLY='$APPLY' NEWB64='IyBaRVVTIGJlbHQ6IGFjdGlvbiByb3V0ZXMgZmFpbCBDTE9TRUQsIHJlYWQtb25seSBkYXNoYm9hcmQgcm91dGVzIGFsbG93ZWQsIGV2ZXJ5dGhpbmcKIyBlbHNlIHVuZGVyIC9yZWFjaC8gZGVuaWVkLiBUaGUgc2VnbWVudCBjbGFzcyAoWy87XS4qKSBjb3ZlcnMgYSB0cmFpbGluZyBzbGFzaCwgdGhlCiMgIjttYXRyaXgiIHRyaWNrIHRoZSBicmlkZ2Ugc3RyaXBzLCBzdWJwYXRocywgYW5kIGFueSBudW1iZXIgb2Ygc2xhc2hlcyAtIHNvIHRoaXMgZG9lcwojIG5vdCBkZXBlbmQgb24gbWVyZ2Vfc2xhc2hlcyBhbmQgZG9lcyBub3QgbW92ZSB0aGUgZmVuY2UgYnkgb25lIGNoYXJhY3Rlci4KIwojIE5PVEU6IHRoaXMgaXMgYW4gQUxMT1dMSVNULiBQcmV2aW91c2x5IHRoZSBlZGdlIGluamVjdGVkICRyZWFjaF9iZWFyZXIgZm9yIGV2ZXJ5CiMgbm9uLWJlbHRlZCAvcmVhY2gvKiBwYXRoLCBzbyB0aGUgYnJpZGdlJ3Mgb3duIEJlYXJlciBnYXRlIHdhcyBuZXZlciBleGVyY2lzZWQgYW5kIGFueQojIG5ldywgYWxpYXNlZCBvciBkZWxpbWl0ZWQgcm91dGUgd2FzIGF1dG8tYXV0aGVudGljYXRlZC4gTmV3IHJvdXRlcyBub3cgZmFpbCBjbG9zZWQuCgojIDEpIEFDVElPTiByb3V0ZXMgLSB0aGVzZSBidXJuIEV4YSBjcmVkaXRzIGFuZCBHaXRIdWIgcXVvdGEgZm9yIGFub255bW91cyBjYWxsZXJzLgojICAgIDQwNCBub3QgNDAzOiA0MDMgYWR2ZXJ0aXNlcyAiYmxvY2tlZCBieSBhIGJsb2NrbGlzdCIsIHdoaWNoIGludml0ZXMgZGVsaW1pdGVyCiMgICAgZnV6emluZyAodGhhdCBpcyBleGFjdGx5IGhvdyB0aGUgJzsnIGhvbGUgd2FzIGZvdW5kKS4KbG9jYXRpb24gfiBeL3JlYWNoLyhzZWFyY2h8Z2h8cmVhZHx5dHxiaWxpfHYyZXh8cnNzKShbLztdLiopPyQgeyByZXR1cm4gNDA0OyB9CgojIDIpIFJFQUQtT05MWSByb3V0ZXMgdGhlIENvbW1hbmQgQ2VudHJlIGRhc2hib2FyZCBhbmQgdGhlIGVzdGF0ZSBtb25pdG9yIG5lZWQuCiMgICAgVGhlIHRva2VuIGlzIGluamVjdGVkIEhFUkUgYW5kIG5vd2hlcmUgZWxzZSBub3cuCmxvY2F0aW9uIH4gXi9yZWFjaC8oc2VsZnxkb2N0b3J8bW9uaXRvcnxtZXRyaWNzfHNraWxsc3xicmllZmluZ3xtZW1vcnkpKFsvO10uKik/JCB7CiAgICBsaW1pdF9yZXEgem9uZT1yZWFjaCBidXJzdD04IG5vZGVsYXk7CiAgICBsaW1pdF9yZXFfc3RhdHVzIDQyOTsgICAjIGRlZmF1bHQgaXMgNTAzLCB3aGljaCB0aGUgdXB0aW1lIG1vbml0b3JzIHJlYWQgYXMgYW4gT1VUQUdFCiAgICBwcm94eV9wYXNzIGh0dHA6Ly8xMjcuMC4wLjE6ODA4MS87CiAgICBwcm94eV9zZXRfaGVhZGVyIEF1dGhvcml6YXRpb24gJHJlYWNoX2JlYXJlcjsKICAgIHByb3h5X3NldF9oZWFkZXIgSG9zdCAkaG9zdDsKfQoKIyAzKSBBbnl0aGluZyBlbHNlIHVuZGVyIC9yZWFjaC8gLSBmYWlsIENMT1NFRCwgc28gbmV3IG9yIHJlbmFtZWQgcm91dGVzIGFyZSBkZW5pZWQKIyAgICBieSBkZWZhdWx0IHJhdGhlciB0aGFuIHNpbGVudGx5IGF1dGhlbnRpY2F0ZWQuCmxvY2F0aW9uIC9yZWFjaC8geyByZXR1cm4gNDA0OyB9Cg==' bash -s" <<'EOS'
+          set -uo pipefail
+          redact() { sed -E 's/(Bearer[[:space:]]+)[A-Za-z0-9._-]{8,}/\1<REDACTED>/g'; }
+          H='Host: zeusaiintelligence.com'
+          chk() { curl -sk -o /dev/null -w '%{http_code}' -m 8 -H "$H" "https://127.0.0.1$1" 2>/dev/null; }
+
+          echo "=== 1. locate the reach snippet (absolute path first, not a grep guess) ==="
+          F=/etc/nginx/snippets/zeus-reach-location.conf
+          if [ ! -f "$F" ]; then
+            F="$(grep -rl 'location[[:space:]].*/reach' /etc/nginx/ 2>/dev/null | grep -v '\.bak' | head -1)"
+          fi
+          if [ -z "$F" ] || [ ! -f "$F" ]; then echo "!! cannot locate the reach snippet"; exit 1; fi
+          echo "target: $F"
+          echo "--- CURRENT config ---"
+          redact < "$F"
+
+          echo
+          echo "=== 2. PROPOSED config ==="
+          printf '%s' "$NEWB64" | base64 -d | tee /tmp/proposed.conf | redact
+
+          if [ "${APPLY:-no}" != "yes" ]; then
+            echo
+            echo "DRY RUN - nothing changed. Re-run with apply=yes to install the above."
+            exit 0
+          fi
+
+          echo
+          echo "=== 3. backup + install ==="
+          BK="/root/nginx-backup-$(date +%Y%m%d-%H%M%S).tar.gz"
+          tar czf "$BK" /etc/nginx && echo "backup: $BK"
+          cp "$F" "$F.zbak"
+          printf '%s' "$NEWB64" | base64 -d > "$F"
+
+          echo
+          echo "=== 4. nginx -t ==="
+          if ! nginx -t 2>&1 | redact; then
+            echo "!! nginx -t FAILED - restoring the ORIGINAL and reloading it"
+            cp "$F.zbak" "$F"; nginx -t >/dev/null 2>&1 && systemctl reload nginx
+            exit 1
+          fi
+          systemctl reload nginx && echo "RELOADED"
+
+          echo
+          echo "=== 5. verify BOTH directions ==="
+          sleep 3
+          FAIL=0
+          echo "--- must be 404 (action routes, incl. slash and semicolon tricks) ---"
+          # NOTE: every path containing ';' is QUOTED. Unquoted it is a command separator
+          # and the whole for-list becomes invalid.
+          for p in "/reach/search" "/reach/search/" "/reach/search;x" "/reach/search%3bfoo" "/reach/gh" "/reach/gh/" "/reach/gh;x" "/reach/yt;x" "/reach/read/" "/reach/rss/"; do
+            c=$(chk "$p"); printf '   %-24s %s\n' "$p" "$c"
+            [ "$c" = "404" ] || FAIL=1
+          done
+          echo "--- must still be 200 (dashboard + estate monitor) ---"
+          for p in "/reach/self" "/reach/doctor" "/reach/monitor" "/reach/metrics" "/reach/skills" "/reach/briefing" "/reach/memory"; do
+            c=$(chk "$p"); printf '   %-24s %s\n' "$p" "$c"
+            case "$c" in 200|429) ;; *) FAIL=1 ;; esac
+            sleep 1
+          done
+
+          echo
+          if [ "$FAIL" = "0" ]; then
+            echo "SUCCESS - action routes 404 (including ; and slash tricks), dashboard routes still 200."
+            echo "Re-check from outside: /reach/gh;x and /reach/gh/ must now both be 404."
+          else
+            echo "!! VERIFICATION FAILED - restoring the original config"
+            cp "$F.zbak" "$F"
+            nginx -t >/dev/null 2>&1 && systemctl reload nginx && echo "rolled back and reloaded"
+            exit 1
+          fi
+          echo
+          echo "REMINDER: rotate REACH_TOKEN - an earlier dry run printed it."
+          EOS
