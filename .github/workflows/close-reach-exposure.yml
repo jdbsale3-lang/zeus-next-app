@@ -27,8 +27,34 @@ on:
 jobs:
   close:
     runs-on: ubuntu-latest
+    # REQUIRED. DROPLET_HOST / DROPLET_USER / DROPLET_SSH_KEY are ENVIRONMENT-scoped
+    # secrets on the 'droplet' environment, not repository secrets. Without this line
+    # they arrive empty, $USER@$HOST expands to nothing, ssh prints its usage text and
+    # the job dies with exit 255. The working deploy-droplet / rollback-droplet jobs in
+    # zeus-ci.yml declare exactly this for the same reason.
+    environment: droplet
     timeout-minutes: 10
     steps:
+      - name: Check the droplet credentials are present
+        env:
+          HOST: ${{ secrets.DROPLET_HOST }}
+          USER: ${{ secrets.DROPLET_USER }}
+          KEY: ${{ secrets.DROPLET_SSH_KEY }}
+        run: |
+          missing=""
+          [ -z "$HOST" ] && missing="$missing DROPLET_HOST"
+          [ -z "$USER" ] && missing="$missing DROPLET_USER"
+          [ -z "$KEY" ]  && missing="$missing DROPLET_SSH_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::missing secret(s):$missing"
+            echo "These live on the 'droplet' ENVIRONMENT, so the job must declare:"
+            echo "    environment: droplet"
+            echo "Present -> HOST=$([ -n "$HOST" ] && echo yes || echo NO) USER=$([ -n "$USER" ] && echo yes || echo NO) KEY=$([ -n "$KEY" ] && echo yes || echo NO)"
+            exit 1
+          fi
+          echo "credentials present -> HOST set (${#HOST} chars), USER=$USER, KEY set (${#KEY} chars)"
+          echo "If this environment has required reviewers, approve the run when prompted."
+
       - name: Install the /reach allowlist
         env:
           HOST: ${{ secrets.DROPLET_HOST }}
